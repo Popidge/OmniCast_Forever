@@ -1,0 +1,12 @@
+{
+  "name": "omnicast-forever-tools",
+  "private": true,
+  "description": "Dev tooling only (Lua syntax check). The addon itself has no build step.",
+  "type": "module",
+  "scripts": {
+    "check": "node tools/check-lua.mjs"
+  },
+  "devDependencies": {
+    "luaparse": "^0.3.1"
+  }
+}
