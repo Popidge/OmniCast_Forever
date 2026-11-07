@@ -57,7 +57,7 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 ## Spell queue (confirmed in the v0.5.x logs)
 
 - Pressing a spell during a cast or GCD fires `SPELL_UPDATE_COOLDOWN(spellID, …)` for it at the press, including a repeat of the spell being cast (about 0.16s before the end).
-- The same event also fires for the current spell at its cast start, and again right after it succeeds.
+- The same event also fires for the current spell at its cast start, and again right after it succeeds. For casts no longer than the queue window (talented 0.4s Corruption), the start event lands inside the window, so filter by time since cast start, not only by the window.
 - `UNIT_SPELLCAST_SENT` for a queued spell fires when it actually goes off, not at the press.
 - `C_Spell.IsCurrentSpell(id)` is true for both the queued spell and the one currently being cast.
 - `CURRENT_SPELL_CAST_CHANGED` fires on queue changes.

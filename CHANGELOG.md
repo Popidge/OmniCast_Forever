@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.3
+
+- **Fixed:** a short cast (talented 0.4s Corruption) showed itself as a queued repeat and could stay stuck across several casts. A cast's own start fires the same cooldown event as a queue press, and with a cast no longer than the 0.4s queue window that start fell inside the window. Same-spell events in a cast's first 0.1s are now ignored.
+- **Fixed:** a queued repeat now clears as soon as a different spell starts or succeeds, instead of lingering until the bar went idle.
+
 ## v0.5.2
 
 - **Fixed:** queueing a repeat of the current spell (v0.5.1 relied on `UNIT_SPELLCAST_SENT`, which the log shows fires when the queued spell goes off, not on the press). The repeat is now detected from the press's `SPELL_UPDATE_COOLDOWN` inside the queue window, excluding the same event at the cast's start and right after it succeeds. SENT is no longer used for queue detection.

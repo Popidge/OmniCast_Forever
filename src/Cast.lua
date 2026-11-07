@@ -109,12 +109,14 @@ function Cast:Begin(kind, castGUID, spellID)
     local l = castLane
     wipe(l)
     l.serial = NextSerial()
+    l.began = GetTime() -- client time this cast started (for queue filtering)
     l.kind = kind
     l.fill = kind -- "cast" | "channel"
     l.state = "active"
     l.castGUID = (castGUID and C.Readable(castGUID) and castGUID) or info.castGUID
     l.spellID = spellID or info.spellID
     if l.spellID then self:ClearQueued(l.spellID) end -- the queued spell started
+    if self.queued and self.queued.repeat_ then self:ClearQueued() end -- a different spell started instead
     l.label = info.text or info.name or ""
     l.name = info.name
     l.icon = info.icon
@@ -457,6 +459,10 @@ local function OnPress(spellID, source, castGUID)
         -- succeeds (cur.succeeded), so both are excluded.
         if source ~= "cooldown" then return end
         if cur.kind ~= "cast" or not cur.finish or cur.succeeded then return end
+        -- The cast's own start fires this event too. Casts no longer than the
+        -- queue window (e.g. talented 0.4s Corruption) would otherwise look
+        -- like a repeat press, so ignore the cast's first moment.
+        if cur.began and now - cur.began < 0.1 then return end
         local left = cur.finish - now
         if left > C.SpellQueueWindow() or left < 0.03 then return end
         if Cast.queued and Cast.queued.id == spellID then return end
@@ -525,8 +531,13 @@ function Cast:Enable()
     ns:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, castGUID, spellID)
         if not C.Readable(spellID) then return end
         local q = Cast.queued
-        -- A repeat stays queued through the success of the cast it waits behind.
-        if q and q.repeat_ and SameCast(castGUID, q.behind) ~= false then return end
+        -- A repeat stays queued through the success of the cast it waits
+        -- behind; any other spell going off means the repeat didn't happen.
+        if q and q.repeat_ then
+            if SameCast(castGUID, q.behind) ~= false and q.id == spellID then return end
+            Cast:ClearQueued()
+            return
+        end
         Cast:ClearQueued(spellID)
     end, P)
     -- A rejected press of the queued spell (e.g. out of range) ends it.
