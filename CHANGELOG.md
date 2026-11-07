@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.2
+
+- **Fixed:** queueing a repeat of the current spell (v0.5.1 relied on `UNIT_SPELLCAST_SENT`, which the log shows fires when the queued spell goes off, not on the press). The repeat is now detected from the press's `SPELL_UPDATE_COOLDOWN` inside the queue window, excluding the same event at the cast's start and right after it succeeds. SENT is no longer used for queue detection.
+- **Fixed:** a queued spell re-detected itself as queued once it started, so the icon stayed up for its whole cast or channel (seen in the log for Shadow Bolt and Drain Soul).
+- **Fixed:** the **Revert All Changes** button didn't move the bar back. Blizzard binds that button to the original function at load, so the method hook never saw the click. The button's click is now hooked too, and Blizzard's has-changes flag is cleared after a revert.
+- `/oc test`: a second Frostbolt queued behind the first (a repeat queue), then Fire Blast queued behind it.
+
 ## v0.5.1 (review fixes)
 
 - **Fixed:** a repeat of the current spell (Shadow Bolt queued behind Shadow Bolt) was never shown as queued. A press of the same spell counts as queued when it is a new send (a different cast GUID from `UNIT_SPELLCAST_SENT`) inside the spell queue window, which is the only time the game accepts it. It stays queued through the current cast's success and clears when it starts or is rejected.

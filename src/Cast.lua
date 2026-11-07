@@ -343,6 +343,7 @@ local function OnSucceeded(_, _, castGUID, spellID)
     -- GUIDs prove this success belongs to a different spell.
     local cur = Cast.cur
     local isHardCast = cur ~= nil and cur.kind == "cast" and SameCast(castGUID, cur.castGUID) ~= false
+    if isHardCast then cur.succeeded = true end
     local readable = C.Readable(spellID)
     local name = readable and C.GetSpellName(spellID) or nil
     local isRanged = name ~= nil and ns.Data:IsRanged(spellID, name)
@@ -380,9 +381,10 @@ end
 -- window) queues it. C_Spell.IsCurrentSpell() is true for a spell that is
 -- "being cast or queued to be cast" (it is what lights action buttons), and
 -- CURRENT_SPELL_CAST_CHANGED fires when the queue changes. The press itself
--- names the candidate: UNIT_SPELLCAST_SENT and SPELL_UPDATE_COOLDOWN both
--- fire on the key press (the latter confirmed in the log), the cooldown event
--- also for pet spells, which IsCurrentSpell then rules out.
+-- names the candidate: SPELL_UPDATE_COOLDOWN fires on the key press (log-
+-- confirmed; it also fires for pet spells, which IsCurrentSpell rules out).
+-- UNIT_SPELLCAST_SENT is no use here: on Forever it fires when the queued
+-- spell actually goes off, not on the press.
 ---------------------------------------------------------------------------
 Cast.queued = nil -- { id, name, icon, time }
 local candidate = {}
@@ -407,6 +409,7 @@ local function LogQueue(fmt, ...)
 end
 
 function Cast:ClearQueued(spellID)
+    if candidate.id and (spellID == nil or candidate.id == spellID) then candidate.id = nil end
     local q = self.queued
     if q and (spellID == nil or q.id == spellID) then
         self.queued = nil
@@ -424,7 +427,11 @@ function Cast:CheckQueued(source)
         LogQueue("cleared %s (%s)", tostring(q.name), source)
         self:ClearQueued()
     end
-    if not self.queued and candidate.id and now - candidate.time < 0.6 and Busy(now) and IsCurrent(candidate.id) then
+    -- Never "queue" the spell that is being cast right now (IsCurrentSpell
+    -- is true for it too); repeats are handled in OnPress.
+    local castingIt = Cast.cur and Cast.cur.spellID == candidate.id
+    if not self.queued and candidate.id and not castingIt and now - candidate.time < 0.6
+        and Busy(now) and IsCurrent(candidate.id) then
         local id = candidate.id
         self.queued = { id = id, name = C.GetSpellName(id), icon = C.GetSpellIcon(id), time = now }
         candidate.id = nil
@@ -443,17 +450,15 @@ local function OnPress(spellID, source, castGUID)
     local cur = Cast.cur
     if cur and cur.spellID == spellID then
         -- Same spell as the current cast. The game only accepts that press
-        -- inside the spell queue window; earlier it is key spam ("Another
-        -- action is in progress"). A press carrying the current cast's GUID
-        -- is the current cast itself.
-        -- Only the press event itself (SENT, with its own cast GUID) counts:
-        -- the cooldown event for this spell also fires as the current cast
-        -- finishes, which is inside the window too.
-        if source ~= "sent" or not castGUID or not C.Readable(castGUID) then return end
-        if cur.kind ~= "cast" or not cur.finish then return end
+        -- inside the spell queue window (earlier it is key spam: "Another
+        -- action is in progress"), and the press fires SPELL_UPDATE_COOLDOWN
+        -- for the spell (log: ~0.16s before the end). The same event also
+        -- fires at the cast's start (outside the window) and right after it
+        -- succeeds (cur.succeeded), so both are excluded.
+        if source ~= "cooldown" then return end
+        if cur.kind ~= "cast" or not cur.finish or cur.succeeded then return end
         local left = cur.finish - now
-        if left > C.SpellQueueWindow() or left < 0.02 then return end
-        if SameCast(castGUID, cur.castGUID) ~= false then return end -- the current cast's own send
+        if left > C.SpellQueueWindow() or left < 0.03 then return end
         if Cast.queued and Cast.queued.id == spellID then return end
         Cast.queued = { id = spellID, name = C.GetSpellName(spellID), icon = C.GetSpellIcon(spellID),
             time = now, repeat_ = true, behind = cur.castGUID }
@@ -461,6 +466,7 @@ local function OnPress(spellID, source, castGUID)
         ns:Wake()
         return
     end
+    if cur and cur.spellID == spellID then return end
     candidate.id, candidate.time = spellID, now
     Cast:CheckQueued(source)
 end
@@ -511,7 +517,6 @@ function Cast:Enable()
     ns:On("SPELL_UPDATE_COOLDOWN", OnCooldownUpdate)
 
     -- Queued spell
-    ns:On("UNIT_SPELLCAST_SENT", function(_, _, _, castGUID, spellID) OnPress(spellID, "sent", castGUID) end, P)
     ns:On("SPELL_UPDATE_COOLDOWN", function(_, spellID) OnPress(spellID, "cooldown") end)
     ns:On("CURRENT_SPELL_CAST_CHANGED", function(_, cancelled)
         Cast:CheckQueued(cancelled and "cancelled" or "changed")

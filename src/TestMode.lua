@@ -1,5 +1,6 @@
 -- OmniCast Forever: scripted demo so the bar can be checked out of combat.
--- Sequence: hard cast -> success flash -> GCD -> channel (ticks, swing strip)
+-- Sequence: cast (pushback, repeat queued) -> second cast (next spell queued)
+--           -> success flash -> GCD -> channel (ticks, swing strip)
 --           -> ranged shot -> dual-wield swings with a GCD strip.
 local _, ns = ...
 local C = ns.Compat
@@ -8,7 +9,7 @@ local T = ns:NewModule("TestMode")
 T.active = false
 
 local t0
-local DURATION = 16.5
+local DURATION = 18.5
 local lanes = {}
 local demoQueued = {}
 
@@ -59,53 +60,61 @@ function T:BuildView(now, view)
     local t = now - t0
     if t >= DURATION then self:Stop() return end
     local colors, main = ns.db.colors, view.main
+    local qw = C.SpellQueueWindow()
+
+    local function Queue(id, fallback)
+        demoQueued.name, demoQueued.icon = C.GetSpellName(id) or fallback, C.GetSpellIcon(id)
+        view.queued = demoQueued
+    end
 
     if t < 2.4 then
-        -- 2.0s cast, hit at 0.9s for 0.4s of pushback
+        -- Frostbolt #1: 2.0s cast, hit at 0.9s for 0.4s of pushback, then a
+        -- second Frostbolt pressed inside the queue window (a repeat queue).
         local l = Spell(Timed(Lane("cast"), 0, 2.0), 116, "Frostbolt")
         l.color, l.fill = colors.cast, "cast"
-        l.latency = 0.12
-        l.queue = C.SpellQueueWindow()
-        l.target = "Training Dummy"
-        if t >= 1.8 then
-            -- Fire Blast pressed inside the queue window: shown as queued.
-            demoQueued.name, demoQueued.icon = C.GetSpellName(2136) or "Fire Blast", C.GetSpellIcon(2136)
-            view.queued = demoQueued
-        end
+        l.latency, l.queue, l.target = 0.12, qw, "Training Dummy"
         if t >= 0.9 then
             l.finish, l.delay, l.pushAt = l.finish + 0.4, 0.4, t0 + 0.9
         end
+        if t >= 2.4 - qw + 0.05 then Queue(116, "Frostbolt") end
         main[1] = l
-    elseif t < 2.7 then
+    elseif t < 4.4 then
+        -- Frostbolt #2 starts straight away (it was queued); Fire Blast queued at the end.
+        local l = Spell(Timed(Lane("cast2"), 2.4, 2.0), 116, "Frostbolt")
+        l.color, l.fill = colors.cast, "cast"
+        l.latency, l.queue, l.target = 0.12, qw, "Training Dummy"
+        if t >= 4.4 - qw + 0.05 then Queue(2136, "Fire Blast") end
+        main[1] = l
+    elseif t < 4.7 then
         local l = Spell(Lane("hold"), 116, "Frostbolt")
         l.state, l.value, l.color, l.fill = "hold", 1, colors.success, "success"
-        l.alpha = math.min(1, (2.7 - t) / 0.2 + 0.2)
+        l.alpha = math.min(1, (4.7 - t) / 0.2 + 0.2)
         main[1] = l
-    elseif t < 4.2 then
-        local l = Spell(Timed(Lane("gcd"), 2.7, 1.5), 2136, "Fire Blast")
+    elseif t < 6.2 then
+        local l = Spell(Timed(Lane("gcd"), 4.7, 1.5), 2136, "Fire Blast")
         l.color, l.fill = colors.gcd, "gcd"
         main[1] = l
-    elseif t < 7.2 then
-        local l = Spell(Timed(Lane("channel"), 4.2, 3.0), 5143, "Arcane Missiles")
+    elseif t < 9.2 then
+        local l = Spell(Timed(Lane("channel"), 6.2, 3.0), 5143, "Arcane Missiles")
         l.color, l.reverse, l.tickInterval, l.latency, l.fill = colors.channel, true, 1, 0.12, "channel"
         l.target = "Training Dummy"
         main[1] = l
-        local s = Looping(Lane("strip"), t, 4.2, 2.4)
+        local s = Looping(Lane("strip"), t, 6.2, 2.4)
         s.color, s.fill = colors.mainhand, "mh"
         view.strip = s
-    elseif t < 10.0 then
-        local l = Spell(Timed(Lane("ranged"), 7.2, 2.8), 75, "Auto Shot")
+    elseif t < 12.0 then
+        local l = Spell(Timed(Lane("ranged"), 9.2, 2.8), 75, "Auto Shot")
         l.color, l.fill = colors.ranged, "ranged"
         l.icon = C.SlotIcon(18) or l.icon
         main[1] = l
     else
-        local mh = Looping(Lane("mh"), t, 10.0, 2.6)
+        local mh = Looping(Lane("mh"), t, 12.0, 2.6)
         mh.label, mh.color, mh.icon, mh.fill = SWING_TIMER_MAIN_HAND or "Main Hand", colors.mainhand, C.SlotIcon(16), "mh"
-        local oh = Looping(Lane("oh"), t, 10.2, 1.9)
+        local oh = Looping(Lane("oh"), t, 12.2, 1.9)
         oh.label, oh.color, oh.fill = SWING_TIMER_OFF_HAND or "Off Hand", colors.offhand, "oh"
         main[1], main[2] = mh, oh
-        if t >= 11.2 and t < 12.2 then
-            local g = Spell(Timed(Lane("gcdstrip"), 11.2, 1.0), 1752, "Sinister Strike")
+        if t >= 13.2 and t < 14.2 then
+            local g = Spell(Timed(Lane("gcdstrip"), 13.2, 1.0), 1752, "Sinister Strike")
             g.color, g.fill = colors.gcd, "gcd"
             view.strip = g
         end

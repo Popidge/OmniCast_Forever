@@ -431,6 +431,11 @@ local function OnRevert()
     C_Timer.After(0, function() EM.stash = nil end)
     ApplyGeometry(EM.snap)
     EM.dirty = false
+    -- Blizzard's own frames are reverted too, so nothing is pending any more
+    -- (and our CheckForSystemActiveChanges hook may have re-set the flag).
+    if EditModeManagerFrame.SetHasActiveChanges then
+        pcall(EditModeManagerFrame.SetHasActiveChanges, EditModeManagerFrame, false)
+    end
     ns:Log("Edit Mode revert: restored OmniCast position/size")
     if dialog and dialog:IsShown() then EM:ShowDialog() end
 end
@@ -489,7 +494,16 @@ function EM:Enable()
     -- Save / Revert
     EventRegistry:RegisterCallback("EditMode.SavedLayouts", function() EM:Snapshot() end, EM)
     if EditModeManagerFrame.RevertAllChanges then
+        -- Method hook: catches exit-without-saving, layout switches and new
+        -- layouts, which call self:RevertAllChanges().
         hooksecurefunc(EditModeManagerFrame, "RevertAllChanges", OnRevert)
+    end
+    -- The Revert All Changes button was bound at load to the original
+    -- function (GenerateClosure), so the method hook never sees it: hook the
+    -- button's click too. OnRevert is a no-op once nothing is pending.
+    local revertButton = EditModeManagerFrame.RevertAllChangesButton
+    if revertButton and revertButton.HookScript then
+        revertButton:HookScript("OnClick", OnRevert)
     end
     if EditModeManagerFrame.MakeNewLayout then
         hooksecurefunc(EditModeManagerFrame, "MakeNewLayout", OnNewLayout)
