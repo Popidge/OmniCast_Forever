@@ -20,6 +20,68 @@ local function Has(path)
     return v ~= nil
 end
 
+-- Which of the player's values the client says are secret right now.
+function Debug:SecretState()
+    if not C_Secrets then return "C_Secrets n/a" end
+    local function Q(fn, ...)
+        if not fn then return "n/a" end
+        local ok, v = pcall(fn, ...)
+        return ok and C.Show(v) or "error"
+    end
+    return string.format("cooldowns=%s GCD cooldown=%s player casts=%s player stats=%s",
+        Q(C_Secrets.ShouldCooldownsBeSecret),
+        Q(C_Secrets.ShouldSpellCooldownBeSecret, 61304),
+        Q(C_Secrets.ShouldUnitSpellCastBeSecret, "player", 686), -- Shadow Bolt
+        Q(C_Secrets.ShouldUnitStatsBeSecret, "player"))
+end
+
+---------------------------------------------------------------------------
+-- Instance and encounter diagnostics. Restrictions differ inside instances
+-- and boss encounters, so log where we are, what is secret on the first pull,
+-- and restart the per-type log caps so the run itself is recorded.
+---------------------------------------------------------------------------
+local instanceKey = "none"
+local pullLogged = false
+
+local function InstanceCheck()
+    local name, instType, _, difficultyName = GetInstanceInfo()
+    local inside = instType ~= nil and instType ~= "none"
+    local key = inside and (C.Show(name) .. "/" .. C.Show(instType)) or "none"
+    if key == instanceKey then return end
+    instanceKey = key
+    if inside then
+        pullLogged = false
+        ns:ResetLogBudgets()
+        ns:Log("=== entered instance: %s (%s, %s) - log caps reset ===",
+            C.Show(name), C.Show(instType), C.Show(difficultyName))
+    else
+        ns:Log("=== left instance: now %s ===", C.Show(GetRealZoneText()))
+    end
+end
+
+function Debug:Enable()
+    ns:On("PLAYER_ENTERING_WORLD", InstanceCheck)
+    ns:On("ZONE_CHANGED_NEW_AREA", InstanceCheck)
+    ns:On("PLAYER_REGEN_DISABLED", function()
+        if instanceKey == "none" or pullLogged then return end
+        pullLogged = true
+        -- Let the combat flag settle before asking what is secret.
+        C_Timer.After(0.2, function()
+            ns:Log("first pull in instance: secret? %s", Debug:SecretState())
+        end)
+    end)
+    ns:On("ENCOUNTER_START", function(_, encounterID, encounterName)
+        ns:ResetLogBudgets()
+        ns:Log("=== encounter start: %s (%s) - log caps reset ===", C.Show(encounterName), C.Show(encounterID))
+        C_Timer.After(0.2, function()
+            ns:Log("encounter: secret? %s", Debug:SecretState())
+        end)
+    end)
+    ns:On("ENCOUNTER_END", function(_, encounterID, encounterName, _, _, success)
+        ns:Log("=== encounter end: %s (%s) success=%s ===", C.Show(encounterName), C.Show(encounterID), C.Show(success))
+    end)
+end
+
 function Debug:Probe()
     -- Never let one bad line hide the rest of the report.
     if not ns.SafeCall(Debug.ProbeLines, Debug) then
@@ -64,15 +126,7 @@ function Debug:ProbeLines()
         ns.Cast.gcdLength, ns.db.gcdLengths[select(2, UnitClass("player"))] and "learned" or "default", counts[1], counts[2], counts[0], C.WorldLatency() * 1000)
     Out("last GCD: source=%s estimated=%s duration object=%s", tostring(g.source), tostring(g.estimated), tostring(g.obj ~= nil))
     if C_Secrets then
-        local function Q(fn, ...)
-            if not fn then return "n/a" end
-            local ok, v = pcall(fn, ...)
-            return ok and C.Show(v) or "error"
-        end
-        Out("secret now? GCD cooldown=%s player casts=%s player stats=%s",
-            Q(C_Secrets.ShouldSpellCooldownBeSecret, 61304),
-            Q(C_Secrets.ShouldUnitSpellCastBeSecret, "player", 686), -- Shadow Bolt
-            Q(C_Secrets.ShouldUnitStatsBeSecret, "player"))
+        Out("secret now? %s", Debug:SecretState())
     end
 
     -- Blizzard frames

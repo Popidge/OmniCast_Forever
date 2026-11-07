@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.4
+
+- **Diagnostics:** the log now records entering and leaving instances, and boss encounter start and end. It also records which values are secret on the first pull in an instance and at each encounter start. The per-type log caps restart on instance entry and encounter start. In the first Ragefire Chasm run, the caps had been used up while questing beforehand, so the run itself was barely logged.
+
 ## v0.5.3
 
 - **Fixed:** a short cast (talented 0.4s Corruption) showed itself as a queued repeat and could stay stuck across several casts. A cast's own start fires the same cooldown event as a queue press, and with a cast no longer than the 0.4s queue window that start fell inside the window. Same-spell events in a cast's first 0.1s are now ignored.

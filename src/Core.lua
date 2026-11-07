@@ -130,6 +130,16 @@ function ns:Log(fmt, ...)
     end
 end
 
+-- Per-type log caps keep a session's log readable. Modules register a reset
+-- here so the caps restart on entering an instance or a boss encounter.
+ns.logResets = {}
+function ns:OnLogReset(fn)
+    ns.logResets[#ns.logResets + 1] = fn
+end
+function ns:ResetLogBudgets()
+    for _, fn in ipairs(ns.logResets) do pcall(fn) end
+end
+
 function ns:Print(fmt, ...)
     local ok, msg = pcall(string.format, fmt, ...)
     print("|cff66ccffOmniCast:|r " .. (ok and msg or tostring(fmt)))

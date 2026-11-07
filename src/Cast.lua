@@ -392,6 +392,11 @@ Cast.queued = nil -- { id, name, icon, time }
 local candidate = {}
 local AUTO_ATTACK = { [6603] = true } -- Auto Attack is "current" while meleeing
 local loggedQueue = 0
+ns:OnLogReset(function()
+    Cast.loggedPush, Cast.loggedTarget = 0, 0
+    logged.cd, logged.succ, logged.gcd = 0, 0, 0
+    loggedQueue = 0
+end)
 
 local function Busy(now)
     return Cast.cur ~= nil or GCDRunning(now)

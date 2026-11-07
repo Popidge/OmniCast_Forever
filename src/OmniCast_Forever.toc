@@ -2,7 +2,7 @@
 ## Title: OmniCast |cff66ccffForever|r
 ## Notes: One fixed-size bar for everything you do: casts, channels, global cooldown, and melee/ranged swing timers.
 ## Author: Jamie Taylor
-## Version: 0.5.3
+## Version: 0.5.4
 ## Category: Combat
 ## IconTexture: Interface\Icons\Spell_Holy_MagicalSentry
 ## SavedVariables: OmniCastForeverDB, OmniCastForeverLog

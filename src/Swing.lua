@@ -100,6 +100,7 @@ end
 -- Swing events
 ---------------------------------------------------------------------------
 local loggedSwing, loggedRange = 0, 0
+ns:OnLogReset(function() loggedSwing, loggedRange = 0, 0 end)
 
 -- PLAYER_SWING(swingDuration, swingType) - confirmed from Blizzard_SwingTimer.
 -- The duration is the real (hasted) swing time, so no stat read is needed.

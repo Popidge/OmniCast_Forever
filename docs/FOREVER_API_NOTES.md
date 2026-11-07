@@ -62,6 +62,11 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 - `C_Spell.IsCurrentSpell(id)` is true for both the queued spell and the one currently being cast.
 - `CURRENT_SPELL_CAST_CHANGED` fires on queue changes.
 
+## Instances (first Ragefire Chasm run, v0.5.3, warlock level 13)
+
+- No errors, and no "secret cast timing" entries. Pushback (`delayTimeMs`) stayed readable, and the user saw nothing wrong in play.
+- Not conclusive: the per-type log caps were used up beforehand. From v0.5.4 the log marks instance and encounter boundaries, records what is secret on the first pull and at each encounter start, and restarts the caps at both.
+
 ## Still open
 
 1. Is the `SPELL_UPDATE_COOLDOWN` payload (`startRecoveryCategory`) readable in combat? It's logged.
