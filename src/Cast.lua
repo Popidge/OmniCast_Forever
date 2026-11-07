@@ -417,7 +417,10 @@ end
 function Cast:CheckQueued(source)
     local now = GetTime()
     local q = self.queued
-    if q and not IsCurrent(q.id) then
+    -- A repeat of the current cast can't be validated with IsCurrentSpell
+    -- (the current cast already makes it "current"); it clears when it starts,
+    -- fails, or the safety timeout in GetQueued expires.
+    if q and not q.repeat_ and not IsCurrent(q.id) then
         LogQueue("cleared %s (%s)", tostring(q.name), source)
         self:ClearQueued()
     end
@@ -432,12 +435,32 @@ function Cast:CheckQueued(source)
 end
 
 -- A key press: remember the spell as a queue candidate when we're busy.
-local function OnPress(spellID, source)
+local function OnPress(spellID, source, castGUID)
     if not spellID or not C.Readable(spellID) or AUTO_ATTACK[spellID] then return end
     if ns.Data:IsRanged(spellID, C.GetSpellName(spellID)) then return end
-    if Cast.cur and Cast.cur.spellID == spellID then return end -- key spam of the current cast
     local now = GetTime()
     if not Busy(now) then return end
+    local cur = Cast.cur
+    if cur and cur.spellID == spellID then
+        -- Same spell as the current cast. The game only accepts that press
+        -- inside the spell queue window; earlier it is key spam ("Another
+        -- action is in progress"). A press carrying the current cast's GUID
+        -- is the current cast itself.
+        -- Only the press event itself (SENT, with its own cast GUID) counts:
+        -- the cooldown event for this spell also fires as the current cast
+        -- finishes, which is inside the window too.
+        if source ~= "sent" or not castGUID or not C.Readable(castGUID) then return end
+        if cur.kind ~= "cast" or not cur.finish then return end
+        local left = cur.finish - now
+        if left > C.SpellQueueWindow() or left < 0.02 then return end
+        if SameCast(castGUID, cur.castGUID) ~= false then return end -- the current cast's own send
+        if Cast.queued and Cast.queued.id == spellID then return end
+        Cast.queued = { id = spellID, name = C.GetSpellName(spellID), icon = C.GetSpellIcon(spellID),
+            time = now, repeat_ = true, behind = cur.castGUID }
+        LogQueue("queued repeat %s (%s) %.2fs before cast ends", tostring(Cast.queued.name), source, cur.finish - now)
+        ns:Wake()
+        return
+    end
     candidate.id, candidate.time = spellID, now
     Cast:CheckQueued(source)
 end
@@ -488,14 +511,25 @@ function Cast:Enable()
     ns:On("SPELL_UPDATE_COOLDOWN", OnCooldownUpdate)
 
     -- Queued spell
-    ns:On("UNIT_SPELLCAST_SENT", function(_, _, _, _, spellID) OnPress(spellID, "sent") end, P)
+    ns:On("UNIT_SPELLCAST_SENT", function(_, _, _, castGUID, spellID) OnPress(spellID, "sent", castGUID) end, P)
     ns:On("SPELL_UPDATE_COOLDOWN", function(_, spellID) OnPress(spellID, "cooldown") end)
     ns:On("CURRENT_SPELL_CAST_CHANGED", function(_, cancelled)
         Cast:CheckQueued(cancelled and "cancelled" or "changed")
     end)
     -- The queued spell going off ends its "queued" state.
-    ns:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, spellID)
-        if C.Readable(spellID) then Cast:ClearQueued(spellID) end
+    ns:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, castGUID, spellID)
+        if not C.Readable(spellID) then return end
+        local q = Cast.queued
+        -- A repeat stays queued through the success of the cast it waits behind.
+        if q and q.repeat_ and SameCast(castGUID, q.behind) ~= false then return end
+        Cast:ClearQueued(spellID)
+    end, P)
+    -- A rejected press of the queued spell (e.g. out of range) ends it.
+    ns:On("UNIT_SPELLCAST_FAILED", function(_, _, castGUID, spellID)
+        local q = Cast.queued
+        if q and C.Readable(spellID) and q.id == spellID and SameCast(castGUID, Cast.cur and Cast.cur.castGUID) ~= true then
+            Cast:ClearQueued(spellID)
+        end
     end, P)
     ns:On("PLAYER_DEAD", function() Cast:ClearQueued() end)
     ns:On("PLAYER_ENTERING_WORLD", function()

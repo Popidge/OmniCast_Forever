@@ -248,6 +248,7 @@ function ns:ResetPosition()
     ns.db.point, ns.db.x, ns.db.y = d.point, d.x, d.y
     local key = ns.EditMode and ns.EditMode.LayoutKey and ns.EditMode:LayoutKey()
     if key then ns.db.layoutPositions[key] = nil end
+    if ns.EditMode and ns.EditMode.active then ns.EditMode:MarkDirty() end
     ns:ApplySettings()
 end
 

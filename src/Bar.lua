@@ -339,6 +339,7 @@ function Bar:SavePosition()
     if key then ns.db.layoutPositions[key] = { point = "CENTER", x = x, y = y } end
     f:ClearAllPoints()
     f:SetPoint("CENTER", UIParent, "CENTER", x, y)
+    if ns.EditMode and ns.EditMode.active then ns.EditMode:MarkDirty() end
 end
 
 ---------------------------------------------------------------------------
@@ -362,7 +363,7 @@ local function NameFirst()
     local p = ns.db.textPriority
     if p == "name" then return true end
     if p == "target" then return false end
-    return not ns.db.showIcon
+    return not (Bar.frame and Bar.frame.iconShown) -- effective, after size clamping
 end
 
 local function AnchorText(sb, nameFirst)
@@ -410,12 +411,26 @@ function Bar:Layout(mode)
         k = db.frameScale or 1
         inset = math.max(1, math.floor(2 * k + 0.5))
     end
-    local ch = db.height - inset * 2
+    -- Every allowed combination must leave a drawable fill. The frame gives
+    -- way first: at most it may take the bar down to a 4px fill.
+    local maxInset = math.max(1, math.floor((db.height - 4) / 2))
+    if inset > maxInset then
+        inset = maxInset
+        if Bar.modern then k = inset / 2 end
+    end
+    local ch = math.max(2, db.height - inset * 2)
     local left = inset
 
-    f.icon:SetShown(db.showIcon)
-    f.iconBg:SetShown(db.showIcon and not Bar.modern)
-    if db.showIcon then
+    -- The icon gives way next: drop it if it would squeeze the bar itself
+    -- below MIN_AREA_W.
+    local MIN_AREA_W = 40
+    local iconW = Bar.modern and (db.height + math.floor((style.iconGap or 1) * k + 0.5)) or (ch + 1)
+    local showIcon = db.showIcon and (db.width - inset * 2 - iconW) >= MIN_AREA_W
+    f.iconShown = showIcon
+
+    f.icon:SetShown(showIcon)
+    f.iconBg:SetShown(showIcon and not Bar.modern)
+    if showIcon then
         f.iconBg:ClearAllPoints()
         if Bar.modern then
             -- Full-height icon, floating left of the bar like Blizzard's.
@@ -434,7 +449,7 @@ function Bar:Layout(mode)
     area:SetPoint("TOPLEFT", left, -inset)
     area:SetPoint("BOTTOMRIGHT", -inset, inset)
     if Bar.modern then
-        local areaW = db.width - left - inset
+        local areaW = math.max(1, db.width - left - inset)
         local bgOut = math.max(1, math.floor(k + 0.5))
         NineLayout(f.mBg, area, bgOut, k, areaW + bgOut * 2, ch + bgOut * 2)
         NineLayout(f.mBorder, area, inset, k, areaW + inset * 2, db.height)
@@ -846,7 +861,7 @@ function Bar:Update(elapsed)
         if n >= 2 then RenderLane(f.lanes[2], main[2], now) elseif f.lanes[2].lane then ClearLane(f.lanes[2]) end
         if v.strip then RenderLane(f.strip, v.strip, now) elseif f.strip.lane then ClearLane(f.strip) end
         self:SetQueued(v.queued)
-        if ns.db.showIcon then self:SetIcon(main[1].icon) end
+        if f.iconShown then self:SetIcon(main[1].icon) end
     end
 
     -- Fade in/out; the last frame stays drawn while fading.

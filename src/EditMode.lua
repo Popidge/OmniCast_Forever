@@ -8,9 +8,11 @@
 -- toggle, active layout) and only post-hook Blizzard functions. We never
 -- write to Edit Mode tables. Writing into EditModeMagnetismManager would
 -- taint Blizzard's Edit Mode code and cause blocked actions.
--- Exception: EditModeManagerFrame:ClearSelectedSystem(), which Blizzard runs
--- through a secure delegate out of combat (CreateSecureDelegate), so it is
--- built to be called from addon code.
+-- Exceptions, both built by Blizzard to be called from addon code:
+--   * EditModeManagerFrame:ClearSelectedSystem(): runs through a secure
+--     delegate out of combat (CreateSecureDelegate).
+--   * EditModeManagerFrame:SetHasActiveChanges(true): "Clear taint off of the
+--     value passed in"; enables Save / Revert for our pending changes.
 local _, ns = ...
 
 local EM = ns:NewModule("EditMode")
@@ -344,6 +346,7 @@ local function CreateDialog()
             if def.step >= 1 then value = math.floor(value + 0.5) end
             ns.db[def.key] = value
             ns:ApplySettings()
+            EM:MarkDirty()
         end, slider)
         dialog.sliders[i] = slider
     end
@@ -385,9 +388,71 @@ function EM:ShowDialog()
 end
 
 ---------------------------------------------------------------------------
+-- Save / Revert, like native frames
+-- Changes made in Edit Mode are pending: Save keeps them, Revert All Changes
+-- (or leaving Edit Mode without saving, which Blizzard handles as a revert)
+-- puts back what was there when Edit Mode opened.
+---------------------------------------------------------------------------
+local GEOMETRY = { "width", "height", "frameScale", "point", "x", "y" }
+
+local function CopyGeometry()
+    local t = {}
+    for _, k in ipairs(GEOMETRY) do t[k] = ns.db[k] end
+    t.layoutPositions = ns.CopyTable(ns.db.layoutPositions)
+    return t
+end
+
+local function ApplyGeometry(t)
+    for _, k in ipairs(GEOMETRY) do ns.db[k] = t[k] end
+    wipe(ns.db.layoutPositions)
+    for key, pos in pairs(t.layoutPositions) do ns.db.layoutPositions[key] = ns.CopyTable(pos) end
+    ns:ApplySettings()
+end
+
+function EM:Snapshot()
+    self.snap = CopyGeometry()
+    self.dirty = false
+end
+
+function EM:MarkDirty()
+    if not self.active then return end
+    self.dirty = true
+    if EditModeManagerFrame.SetHasActiveChanges then
+        pcall(EditModeManagerFrame.SetHasActiveChanges, EditModeManagerFrame, true)
+    end
+end
+
+local function OnRevert()
+    if not (EM.dirty and EM.snap) then return end
+    -- Keep the pending values for a moment: "Save" on a preset layout makes a
+    -- new layout, and Blizzard reverts before creating it (see OnNewLayout).
+    local key = EM:LayoutKey()
+    EM.stash = { geometry = CopyGeometry(), pos = key and ns.db.layoutPositions[key] }
+    C_Timer.After(0, function() EM.stash = nil end)
+    ApplyGeometry(EM.snap)
+    EM.dirty = false
+    ns:Log("Edit Mode revert: restored OmniCast position/size")
+    if dialog and dialog:IsShown() then EM:ShowDialog() end
+end
+
+-- A new layout was made from the current (unsaved) one: carry our pending
+-- position/size into it, as Blizzard does for its own frames.
+local function OnNewLayout()
+    local st = EM.stash
+    EM.stash = nil
+    if not st then return end
+    for _, k in ipairs(GEOMETRY) do ns.db[k] = st.geometry[k] end
+    local key = EM:LayoutKey()
+    if key and st.pos then ns.db.layoutPositions[key] = ns.CopyTable(st.pos) end
+    ns:ApplySettings()
+    EM:Snapshot()
+end
+
+---------------------------------------------------------------------------
 -- Lifecycle
 ---------------------------------------------------------------------------
 function EM:OnEnter()
+    self:Snapshot()
     self.active = true
     ns.Bar.editMode = true
     ns.Bar:UpdateMover()
@@ -421,6 +486,22 @@ function EM:Enable()
     hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function()
         if not EM.clearing then EM:Deselect() end -- ignore our own call from Select()
     end)
+    -- Save / Revert
+    EventRegistry:RegisterCallback("EditMode.SavedLayouts", function() EM:Snapshot() end, EM)
+    if EditModeManagerFrame.RevertAllChanges then
+        hooksecurefunc(EditModeManagerFrame, "RevertAllChanges", OnRevert)
+    end
+    if EditModeManagerFrame.MakeNewLayout then
+        hooksecurefunc(EditModeManagerFrame, "MakeNewLayout", OnNewLayout)
+    end
+    if EditModeManagerFrame.CheckForSystemActiveChanges then
+        -- Blizzard recomputes "has changes" from its own frames only; keep
+        -- Save/Revert enabled while ours are pending.
+        hooksecurefunc(EditModeManagerFrame, "CheckForSystemActiveChanges", function()
+            if EM.dirty then pcall(EditModeManagerFrame.SetHasActiveChanges, EditModeManagerFrame, true) end
+        end)
+    end
+
     if EditModeManagerFrame.UpdateLayoutInfo then
         -- Layout switched/loaded: move to that layout's saved position.
         hooksecurefunc(EditModeManagerFrame, "UpdateLayoutInfo", function()

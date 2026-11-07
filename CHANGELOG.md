@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.1 (review fixes)
+
+- **Fixed:** a repeat of the current spell (Shadow Bolt queued behind Shadow Bolt) was never shown as queued. A press of the same spell counts as queued when it is a new send (a different cast GUID from `UNIT_SPELLCAST_SENT`) inside the spell queue window, which is the only time the game accepts it. It stays queued through the current cast's success and clears when it starts or is rejected.
+- **Fixed:** some allowed size combinations (e.g. height 8 at frame thickness 3x, or a narrow, tall bar with the icon on) produced negative drawing sizes. The frame thickness now gives way first (the fill never goes below 4px), then the icon is dropped if it would leave the bar under 40px wide. Text priority follows the icon actually shown.
+- **Fixed:** Edit Mode's Revert All Changes didn't revert OmniCast. Changes made in Edit Mode are now pending, like native frames:
+  - They enable Blizzard's Save and Revert buttons, and closing Edit Mode or switching layouts brings up Blizzard's unsaved-changes warning.
+  - Revert, or leaving without saving, restores the position and size from when Edit Mode was opened.
+  - Saving a preset as a new layout carries the pending position into the new layout.
+
 ## v0.5.0: Queued spell
 
 - **New: queued spell display** (on by default). When you press your next spell during a cast, channel or the GCD (inside the spell queue window), its icon appears at the right end of the bar until it goes off. The timer moves left of it.
