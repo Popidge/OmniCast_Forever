@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.5
+
+- **Fixed:** a spell pressed outside the spell queue window could show as queued. The game briefly marks it as current anyway, so the icon flickered. This happened for instants pressed mid-channel (they go off at once and cut the channel), for key spam early in a cast, and for a spell's own cooldown event at the start of its GCD (all in the Ragefire Chasm log). Every press now has to fall inside the queue window, not just repeats of the current spell.
+
 ## v0.5.4
 
 - **Diagnostics:** the log now records entering and leaving instances, and boss encounter start and end. It also records which values are secret on the first pull in an instance and at each encounter start. The per-type log caps restart on instance entry and encounter start. In the first Ragefire Chasm run, the caps had been used up while questing beforehand, so the run itself was barely logged.

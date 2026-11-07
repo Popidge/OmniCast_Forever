@@ -478,6 +478,15 @@ local function OnPress(spellID, source, castGUID)
         return
     end
     if cur and cur.spellID == spellID then return end
+    -- The game only queues a press inside the spell queue window. Earlier,
+    -- the spell is briefly "current" anyway (instants pressed mid-channel go
+    -- off at once and cut it; key spam mid-cast is rejected; a spell's own
+    -- post-success event lands at the start of its GCD), which isn't a queue.
+    local finish = cur and cur.finish or gcd.finish
+    if finish and finish - now > C.SpellQueueWindow() + 0.1 then
+        candidate.id = nil
+        return
+    end
     candidate.id, candidate.time = spellID, now
     Cast:CheckQueued(source)
 end

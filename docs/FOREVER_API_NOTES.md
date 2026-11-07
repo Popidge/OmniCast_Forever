@@ -67,6 +67,17 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 - No errors, and no "secret cast timing" entries. Pushback (`delayTimeMs`) stayed readable, and the user saw nothing wrong in play.
 - Not conclusive: the per-type log caps were used up beforehand. From v0.5.4 the log marks instance and encounter boundaries, records what is secret on the first pull and at each encounter start, and restarts the caps at both.
 
+## Instances (second Ragefire Chasm run, v0.5.4, level 15, all four bosses)
+
+- Secret on the first pull and at every encounter start: `cooldowns=true`, GCD cooldown true, **player casts false**, player stats true. The same as open-world combat; boss encounters added nothing.
+- **The target name from `UNIT_SPELLCAST_SENT` is secret in instances** (readable in the open world). `FontString:SetText` still shows it, but self-targets can't be filtered out by comparing names there.
+- Readable in instances and encounters:
+  - Spell IDs on START/SUCCEEDED, and the `SPELL_UPDATE_COOLDOWN` payload (category 133).
+  - `PLAYER_SWING` (wand).
+  - Channel pushback.
+  - `IsCurrentSpell`; `SetTimerDuration` worked.
+- `IsCurrentSpell` is briefly true for a press *outside* the queue window too: an instant mid-channel goes off at once and cuts the channel, key spam is rejected, and a spell's own post-success event lands. Queue detection must apply the window to every press.
+
 ## Still open
 
 1. Is the `SPELL_UPDATE_COOLDOWN` payload (`startRecoveryCategory`) readable in combat? It's logged.
