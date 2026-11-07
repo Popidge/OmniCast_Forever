@@ -18,7 +18,8 @@ ns.defaults = {
     locked = true,
 
     -- look
-    style = "modern",           -- modern (Forever art) | simple | minimal
+    style = "modern",
+    frameScale = 1,             -- modern style frame/spark thickness (1 = Blizzard native)           -- modern (Forever art) | simple | minimal
     texture = "Blizzard",
     fontSize = 11,
     showIcon = true,
@@ -68,6 +69,8 @@ ns.defaults = {
     debug = false,
 
     -- learned in play: spellID -> 0 no GCD | 1 GCD only | 2 GCD + own cooldown
+    layoutPositions = {},       -- Edit Mode layout key -> { point, x, y }
+
     gcdSpells = {},
     spellGCD = {},              -- spellID -> GCD seconds (exact, learned out of combat)
     gcdLengths = {},            -- class -> GCD seconds
@@ -242,6 +245,8 @@ end
 function ns:ResetPosition()
     local d = ns.defaults
     ns.db.point, ns.db.x, ns.db.y = d.point, d.x, d.y
+    local key = ns.EditMode and ns.EditMode.LayoutKey and ns.EditMode:LayoutKey()
+    if key then ns.db.layoutPositions[key] = nil end
     ns:ApplySettings()
 end
 

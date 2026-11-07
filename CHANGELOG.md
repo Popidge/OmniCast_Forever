@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.4.1
+
+- **Selection:** selecting the bar now deselects any selected Blizzard frame, so only one thing is selected and arrow keys reach the bar. This uses `ClearSelectedSystem`, which Blizzard runs through a secure delegate out of combat, so it is taint-safe.
+- **Snap preview lines:** red guide lines show which edge or centre the bar is snapping to while dragging, like Blizzard's frames.
+- **Edit Mode dialog:** text no longer overflows. It uses the same layout as Blizzard's settings dialog (100px label, 200px slider with value, 343px rows), with full-width stacked buttons.
+
+## v0.4.0: Edit Mode
+
+- **The bar behaves like a native Edit Mode frame:**
+  - Blizzard's selection highlight: blue normally, yellow when selected.
+  - Click to select. Selecting a Blizzard frame, or clicking empty space, deselects it.
+  - **Live snapping** while dragging, following Blizzard's rules (8px range, the Snap toggle). It snaps beside, above or below other Edit Mode frames, aligns edges and centres with nearby frames, and snaps to screen edges and centre, and to grid lines when the grid is shown.
+  - **Arrow keys** nudge the selected bar 1px (Shift: 10px).
+  - **Settings dialog** in Edit Mode style: Width, Height, Frame Thickness, Reset Position, and More Settings.
+  - **Position saved per Edit Mode layout:** switching layouts moves the bar, like native frames do.
+- Taint-safe: Edit Mode state is read and Blizzard functions are only post-hooked. Nothing is written into Blizzard's Edit Mode tables.
+- `/oc unlock` outside Edit Mode still gives the simple drag handle.
+
+## v0.3.2
+
+- **Modern style: the frame no longer zooms with the bar.** As with native UI frames, the bar grows but the frame and spark keep Blizzard's native thickness: a 2px frame and an 8px-wide pip that pokes about 4.5px past the fill. The background and frame art are nine-sliced (corners and edges at native size, only the middle stretches). This replaces v0.3.1's proportional zoom, which made the frame and spark chunky on large bars.
+- **New setting: Frame thickness** (0.5x to 3x, default 1x = Blizzard native) under Appearance.
+
 ## v0.3.1
 
 - **Modern style scales cleanly at any size.** The frame thickness, fill inset, icon gap and spark keep Blizzard's proportions (an 11px fill inside a 15px frame) at any bar height. The frame and background art are three-sliced: the rounded end caps keep their shape and scale with the height, and only the middle stretches with the width.

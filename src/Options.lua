@@ -79,6 +79,9 @@ local function Build()
             { "minimal", "Minimal (1px)" },
         }
     end, "Modern uses Forever's own cast bar and swing timer art. Colour and texture settings apply to Simple and Minimal.")
+    Slider("frameScale", "Frame thickness", 0.5, 3, 0.25,
+        "Modern style: thickness of the frame and spark. 1 = the same as Blizzard's own cast bar, at any bar size.",
+        function(v) return string.format("%.2fx", v) end)
     Dropdown("texture", "Bar texture", function()
         local list = {}
         for name in pairs(ns.Bar.TEXTURES) do list[#list + 1] = { name, name } end

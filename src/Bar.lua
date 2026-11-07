@@ -94,62 +94,82 @@ end
 
 ---------------------------------------------------------------------------
 -- Clean scaling for the modern frame art.
--- Blizzard's cast bar art is drawn for an 11px fill. Stretching one texture
--- to a bigger bar distorts the rounded ends, so the background and frame are
--- three-sliced: the end caps keep their aspect ratio and scale with the
--- height, and only the middle stretches with the width.
+-- The bar grows; the frame does not. Like native UI frames, the background
+-- and frame art are nine-sliced: corners and edges are drawn at Blizzard's
+-- native thickness (times the "frame thickness" setting) and only the middle
+-- stretches. Blizzard draws the frame atlas 15px tall around an 11px fill
+-- (2px frame), and the background 13px tall (1px), which sets the native size.
+--
+-- Slice margins come from the atlas's own sliceData when it has some.
+-- Otherwise the left/right caps are square (rounded ends fit within the
+-- height) and the vertical split is the centre row: the top and bottom halves
+-- keep their shape, and the straight centre row stretches. That gives a pill
+-- shape with straight sides at any height.
 ---------------------------------------------------------------------------
-local function NewSlice(parent, layer, sub)
-    return {
-        L = parent:CreateTexture(nil, layer, nil, sub),
-        M = parent:CreateTexture(nil, layer, nil, sub),
-        R = parent:CreateTexture(nil, layer, nil, sub),
-    }
+local NINE = { "TL", "T", "TR", "L", "C", "R", "BL", "B", "BR" }
+
+local function NewNine(parent, layer, sub)
+    local n = {}
+    for _, k in ipairs(NINE) do n[k] = parent:CreateTexture(nil, layer, nil, sub) end
+    return n
 end
 
 local loggedAtlas = {}
-local function SliceSetAtlas(sl, atlas)
+-- nativeH: the height (UI px) Blizzard draws this atlas at.
+local function NineSetAtlas(n, atlas, nativeH)
     local info = C_Texture.GetAtlasInfo(atlas)
     local src = info and (info.file or info.filename)
     if not src then return false end
+    local W, H = info.width, info.height
     local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
     local sd = info.sliceData
-    -- Cap width in atlas pixels: the atlas's own slice margins if it has
-    -- them, else a square cap (rounded ends fit within the height).
-    local capPx = (sd and math.max(sd.marginLeft or 0, sd.marginRight or 0)) or 0
-    if capPx <= 0 then capPx = info.height end
-    capPx = math.min(capPx, info.width / 2)
-    local capTc = (r - l) * capPx / info.width
-    sl.capRatio = capPx / info.height
-    for _, k in ipairs({ "L", "M", "R" }) do sl[k]:SetTexture(src) end
-    sl.L:SetTexCoord(l, l + capTc, t, b)
-    sl.M:SetTexCoord(l + capTc, r - capTc, t, b)
-    sl.R:SetTexCoord(r - capTc, r, t, b)
+    local ml, mr, mt, mb
+    if sd and ((sd.marginLeft or 0) > 0 or (sd.marginTop or 0) > 0) then
+        ml, mr, mt, mb = sd.marginLeft, sd.marginRight, sd.marginTop, sd.marginBottom
+    else
+        local cap = math.min(H, W / 2 - 1)
+        ml, mr = cap, cap
+        mt, mb = H / 2 - 0.5, H / 2 - 0.5 -- 1 atlas px centre row stretches
+    end
+    local u0, u1, u2, u3 = l, l + (r - l) * ml / W, r - (r - l) * mr / W, r
+    local v0, v1, v2, v3 = t, t + (b - t) * mt / H, b - (b - t) * mb / H, b
+    for _, k in ipairs(NINE) do n[k]:SetTexture(src) end
+    n.TL:SetTexCoord(u0, u1, v0, v1); n.T:SetTexCoord(u1, u2, v0, v1); n.TR:SetTexCoord(u2, u3, v0, v1)
+    n.L:SetTexCoord(u0, u1, v1, v2);  n.C:SetTexCoord(u1, u2, v1, v2); n.R:SetTexCoord(u2, u3, v1, v2)
+    n.BL:SetTexCoord(u0, u1, v2, v3); n.B:SetTexCoord(u1, u2, v2, v3); n.BR:SetTexCoord(u2, u3, v2, v3)
+    n.px = nativeH / H -- UI px per atlas px at thickness 1
+    n.ml, n.mr, n.mt, n.mb = ml, mr, mt, mb
     if not loggedAtlas[atlas] then
         loggedAtlas[atlas] = true
-        ns:Log("atlas %s: %dx%d, slice %s, cap %.0fpx", atlas, info.width, info.height,
-            sd and string.format("L%d T%d R%d B%d", sd.marginLeft, sd.marginTop, sd.marginRight, sd.marginBottom) or "none", capPx)
+        ns:Log("atlas %s: %dx%d, slice %s", atlas, W, H,
+            sd and string.format("L%s T%s R%s B%s", tostring(sd.marginLeft), tostring(sd.marginTop),
+                tostring(sd.marginRight), tostring(sd.marginBottom)) or "none")
     end
     return true
 end
 
--- Places a slice around `region`, extending `out` px past it on every side.
-local function SliceLayout(sl, region, out, drawnH, maxW)
-    local capW = math.floor(drawnH * (sl.capRatio or 1) + 0.5)
-    if maxW and capW * 2 > maxW then capW = math.floor(maxW / 2) end
-    sl.L:ClearAllPoints(); sl.M:ClearAllPoints(); sl.R:ClearAllPoints()
-    sl.L:SetPoint("TOPLEFT", region, "TOPLEFT", -out, out)
-    sl.L:SetPoint("BOTTOMLEFT", region, "BOTTOMLEFT", -out, -out)
-    sl.L:SetWidth(capW)
-    sl.R:SetPoint("TOPRIGHT", region, "TOPRIGHT", out, out)
-    sl.R:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", out, -out)
-    sl.R:SetWidth(capW)
-    sl.M:SetPoint("TOPLEFT", sl.L, "TOPRIGHT")
-    sl.M:SetPoint("BOTTOMRIGHT", sl.R, "BOTTOMLEFT")
+-- Places the nine-slice around `region`, `out` px past it on every side.
+-- `scale` is the frame thickness multiplier.
+local function NineLayout(n, region, out, scale, totalW, totalH)
+    local f = (n.px or 1) * scale
+    local L, R = n.ml * f, n.mr * f
+    local T, B = n.mt * f, n.mb * f
+    if L + R > totalW then local k = totalW / (L + R); L, R = L * k, R * k end
+    if T + B > totalH then local k = totalH / (T + B); T, B = T * k, B * k end
+    for _, k in ipairs(NINE) do n[k]:ClearAllPoints() end
+    n.TL:SetPoint("TOPLEFT", region, "TOPLEFT", -out, out);          n.TL:SetSize(L, T)
+    n.TR:SetPoint("TOPRIGHT", region, "TOPRIGHT", out, out);         n.TR:SetSize(R, T)
+    n.BL:SetPoint("BOTTOMLEFT", region, "BOTTOMLEFT", -out, -out);   n.BL:SetSize(L, B)
+    n.BR:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", out, -out);  n.BR:SetSize(R, B)
+    n.T:SetPoint("TOPLEFT", n.TL, "TOPRIGHT");       n.T:SetPoint("BOTTOMRIGHT", n.TR, "BOTTOMLEFT")
+    n.B:SetPoint("TOPLEFT", n.BL, "TOPRIGHT");       n.B:SetPoint("BOTTOMRIGHT", n.BR, "BOTTOMLEFT")
+    n.L:SetPoint("TOPLEFT", n.TL, "BOTTOMLEFT");     n.L:SetPoint("BOTTOMRIGHT", n.BL, "TOPRIGHT")
+    n.R:SetPoint("TOPLEFT", n.TR, "BOTTOMLEFT");     n.R:SetPoint("BOTTOMRIGHT", n.BR, "TOPRIGHT")
+    n.C:SetPoint("TOPLEFT", n.TL, "BOTTOMRIGHT");    n.C:SetPoint("BOTTOMRIGHT", n.BR, "TOPLEFT")
 end
 
-local function SliceShown(sl, shown)
-    sl.L:SetShown(shown); sl.M:SetShown(shown); sl.R:SetShown(shown)
+local function NineShown(n, shown)
+    for _, k in ipairs(NINE) do n[k]:SetShown(shown) end
 end
 
 local SPARK = "Interface\\CastingBar\\UI-CastingBar-Spark"
@@ -246,11 +266,11 @@ function Bar:Create()
     f.strip:SetFrameLevel(f.lanes[1]:GetFrameLevel() + 5)
 
     -- Modern style: Forever's cast bar background + frame around the lane area.
-    f.mBg = NewSlice(f, "BACKGROUND", 2)
+    f.mBg = NewNine(f, "BACKGROUND", 2)
     local bf = CreateFrame("Frame", nil, f)
     bf:SetAllPoints(f.area)
     bf:SetFrameLevel(f.strip:GetFrameLevel() + 2)
-    f.mBorder = NewSlice(bf, "OVERLAY", 0)
+    f.mBorder = NewNine(bf, "OVERLAY", 0)
 
     -- Mover overlay (unlocked / Edit Mode)
     local m = CreateFrame("Frame", nil, f)
@@ -277,16 +297,34 @@ function Bar:Create()
     self.frame = f
 end
 
+-- Positions are stored per Edit Mode layout (like native frames), with
+-- db.point/x/y as the fallback for layouts that haven't placed the bar yet.
+function Bar:GetPosition()
+    local key = ns.EditMode and ns.EditMode.LayoutKey and ns.EditMode:LayoutKey()
+    local p = key and ns.db.layoutPositions[key]
+    if p then return p.point, p.x, p.y end
+    return ns.db.point or "CENTER", ns.db.x or 0, ns.db.y or 0
+end
+
+function Bar:ApplyPosition()
+    local f = self.frame
+    local point, x, y = self:GetPosition()
+    f:ClearAllPoints()
+    f:SetPoint(point, UIParent, point, x, y)
+end
+
 function Bar:SavePosition()
     local f = self.frame
     local cx, cy = f:GetCenter()
     local ux, uy = UIParent:GetCenter()
     local scale = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    ns.db.point = "CENTER"
-    ns.db.x = math.floor(cx * scale - ux + 0.5)
-    ns.db.y = math.floor(cy * scale - uy + 0.5)
+    local x = math.floor(cx * scale - ux + 0.5)
+    local y = math.floor(cy * scale - uy + 0.5)
+    ns.db.point, ns.db.x, ns.db.y = "CENTER", x, y
+    local key = ns.EditMode and ns.EditMode.LayoutKey and ns.EditMode:LayoutKey()
+    if key then ns.db.layoutPositions[key] = { point = "CENTER", x = x, y = y } end
     f:ClearAllPoints()
-    f:SetPoint("CENTER", UIParent, "CENTER", ns.db.x, ns.db.y)
+    f:SetPoint("CENTER", UIParent, "CENTER", x, y)
 end
 
 ---------------------------------------------------------------------------
@@ -351,12 +389,12 @@ function Bar:Layout(mode)
     local f, db = self.frame, ns.db
     local style = Bar.style
     local inset = style.inset
-    local k = 1 -- art scale vs Blizzard's 11px fill
+    local k = 1 -- frame thickness: 1 = Blizzard native
     if Bar.modern then
-        -- Blizzard: 11px fill, background 1px and frame 2px outside it, so
-        -- the frame is 15/11 of the fill. Keep those ratios at any height.
-        inset = math.max(1, math.floor(db.height * 2 / 15 + 0.5))
-        k = (db.height - inset * 2) / 11
+        -- The bar grows, the frame doesn't: Blizzard's frame sits 2px outside
+        -- the fill at native size, times the frame thickness setting.
+        k = db.frameScale or 1
+        inset = math.max(1, math.floor(2 * k + 0.5))
     end
     local ch = db.height - inset * 2
     local left = inset
@@ -384,8 +422,8 @@ function Bar:Layout(mode)
     if Bar.modern then
         local areaW = db.width - left - inset
         local bgOut = math.max(1, math.floor(k + 0.5))
-        SliceLayout(f.mBg, area, bgOut, ch + bgOut * 2, areaW + bgOut * 2)
-        SliceLayout(f.mBorder, area, inset, db.height, areaW + inset * 2)
+        NineLayout(f.mBg, area, bgOut, k, areaW + bgOut * 2, ch + bgOut * 2)
+        NineLayout(f.mBorder, area, inset, k, areaW + inset * 2, db.height)
     end
 
     local l1, l2 = f.lanes[1], f.lanes[2]
@@ -422,7 +460,9 @@ function Bar:Layout(mode)
         sb.target:SetTextColor(tc[1], tc[2], tc[3])
         local h = (i == 1) and (mode == "dual" and ch - 1 - laneH or ch) or laneH
         if Bar.modern then
-            sb.spark:SetSize(math.max(4, math.floor(h * 0.73 + 0.5)), h * 1.8) -- Blizzard pip: 8x20 on an 11px bar
+            -- Blizzard pip: 8x20 on an 11px fill, i.e. native width, poking
+            -- 4.5px past each edge. Keep that at any height.
+            sb.spark:SetSize(math.max(3, math.floor(8 * k + 0.5)), h + math.floor(9 * k + 0.5))
         else
             sb.spark:SetSize(math.max(8, math.floor(h * 0.9)), h * 2.2)
         end
@@ -434,7 +474,7 @@ function Bar:Layout(mode)
     strip:SetPoint("BOTTOMRIGHT", area, "BOTTOMRIGHT")
     strip:SetHeight(math.min(db.stripHeight, math.max(1, math.floor(ch / 3))))
     if Bar.modern then
-        strip.spark:SetSize(4, strip:GetHeight() * 2)
+        strip.spark:SetSize(math.max(2, math.floor(4 * k + 0.5)), strip:GetHeight() + math.floor(4 * k + 0.5))
     else
         strip.spark:SetSize(6, strip:GetHeight() * 3)
     end
@@ -452,16 +492,15 @@ function Bar:ApplySettings()
     Bar.modern = style.atlas == true
 
     f:SetSize(db.width, db.height)
-    f:ClearAllPoints()
-    f:SetPoint(db.point or "CENTER", UIParent, db.point or "CENTER", db.x or 0, db.y or 0)
+    self:ApplyPosition()
 
     if Bar.modern then
         f:SetBackdrop(nil)
-        SliceShown(f.mBg, SliceSetAtlas(f.mBg, FRAME_ATLAS.bg))
-        SliceShown(f.mBorder, SliceSetAtlas(f.mBorder, FRAME_ATLAS.border))
+        NineShown(f.mBg, NineSetAtlas(f.mBg, FRAME_ATLAS.bg, 13))
+        NineShown(f.mBorder, NineSetAtlas(f.mBorder, FRAME_ATLAS.border, 15))
     else
-        SliceShown(f.mBg, false)
-        SliceShown(f.mBorder, false)
+        NineShown(f.mBg, false)
+        NineShown(f.mBorder, false)
         f:SetBackdrop(style.backdrop)
         local bg, border = db.colors.background, style.borderColor or db.colors.border
         f:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] or 1)
@@ -480,11 +519,13 @@ function Bar:ApplySettings()
     ns:Wake()
 end
 
+-- Outside Edit Mode, /oc unlock shows a simple drag handle. In Edit Mode the
+-- EditMode module's native-style selection overlay takes over.
 function Bar:UpdateMover()
     local f = self.frame
-    local movable = (not ns.db.locked) or self.editMode
-    f:EnableMouse(movable)
-    f.mover:SetShown(movable)
+    local unlocked = (not ns.db.locked) and not self.editMode
+    f:EnableMouse(unlocked)
+    f.mover:SetShown(unlocked)
 end
 
 ---------------------------------------------------------------------------
@@ -797,8 +838,4 @@ function Bar:Enable()
         ns.SafeCall(Bar.Update, Bar, elapsed)
     end)
 
-    if EventRegistry and EventRegistry.RegisterCallback then
-        EventRegistry:RegisterCallback("EditMode.Enter", function() Bar.editMode = true; Bar:UpdateMover(); ns:Wake() end, Bar)
-        EventRegistry:RegisterCallback("EditMode.Exit", function() Bar.editMode = false; Bar:UpdateMover(); ns:Wake() end, Bar)
-    end
 end

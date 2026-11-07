@@ -4,12 +4,12 @@
 
 - **One bar.** OmniCast tracks whatever your character is doing, in a single fixed-size bar. **No second bar, ever.** Features that need another bar (target/focus/enemy castbars, mirror bars, multiple bars) belong in other addons.
 - **Only what you're doing right now.** The bar shows the character's current action: cast, channel, GCD, swing. Passive or ambient state, such as mana regen ticks or the five-second rule, belongs elsewhere (e.g. the player frame), not here.
-- **Scales cleanly.** Users size the bar to suit their UI, often large and prominent. All art keeps its proportions at any width and height: geometry is relative to the bar height, and frame art is three-sliced.
+- **Scales cleanly.** Users size the bar to suit their UI, often large and prominent. All art keeps its proportions at any width and height: the bar grows but the frame and spark stay at native thickness (nine-sliced art), like native UI frames. The user tested a proportional zoom and rejected it: at a large size it made the frame and spark chunky.
 - **Fits the base UI.** OmniCast should look native to Forever. Forever's Classic and Modern Edit Mode presets differ only in layout, and both use the same modern cast bar art. So the default is **Modern**, built from Forever's own art. A true vanilla-art Classic style may come later.
 
 ## Next
 
-1. **Look and feel.** ~~Modern style from Forever's own art~~ (v0.3.0). Still to do: Edit Mode integration (snapping, like native frames) and a colour picker for the flat styles. A Classic (vanilla art) style is deferred: Forever's Classic/Modern presets only differ in layout, and both use the modern cast bar art.
+1. **Look and feel.** ~~Modern style from Forever's own art~~ (v0.3.0). ~~Edit Mode integration~~ (v0.4.0). Still to do: a colour picker for the flat styles (low priority). A Classic (vanilla art) style is deferred: Forever's Classic/Modern presets only differ in layout, and both use the modern cast bar art.
 2. **Queued spell display.** When the next spell is pressed during the spell-queue window, show it (icon and name) at the end of the bar. Forever reports the press through `SPELL_UPDATE_COOLDOWN` and `UNIT_SPELLCAST_SENT`.
 
 ## Later
