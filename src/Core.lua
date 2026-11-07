@@ -33,6 +33,7 @@ ns.defaults = {
     showLatency = true,
     showQueueWindow = true,
     showTicks = true,
+    showQueued = true,          -- icon of the spell queued behind the current cast/GCD
     showPushback = true,        -- delay text + flash when damage pushes the cast back
     showTarget = false,         -- spell target name on casts/channels
 

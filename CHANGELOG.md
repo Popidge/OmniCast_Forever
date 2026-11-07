@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.0: Queued spell
+
+- **New: queued spell display** (on by default). When you press your next spell during a cast, channel or the GCD (inside the spell queue window), its icon appears at the right end of the bar until it goes off. The timer moves left of it.
+  - Detection: the key press (`UNIT_SPELLCAST_SENT` / `SPELL_UPDATE_COOLDOWN`) names the candidate, `C_Spell.IsCurrentSpell` confirms it is queued (the same check action buttons use), and `CURRENT_SPELL_CAST_CHANGED` clears it when cancelled. It also clears when the spell starts or succeeds. Pet spells, Auto Attack, wand and Auto Shot are ignored.
+- The spell queue window now comes from the client (`C_Spell.GetSpellQueueWindow`), falling back to the CVar.
+- `/oc test` shows Fire Blast queued during the Frostbolt cast, followed by its GCD.
+- Setting: Settings > Casting > Queued spell.
+
 ## v0.4.1
 
 - **Selection:** selecting the bar now deselects any selected Blizzard frame, so only one thing is selected and arrow keys reach the bar. This uses `ClearSelectedSystem`, which Blizzard runs through a secure delegate out of combat, so it is taint-safe.

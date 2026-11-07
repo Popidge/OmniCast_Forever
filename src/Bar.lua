@@ -272,6 +272,20 @@ function Bar:Create()
     bf:SetFrameLevel(f.strip:GetFrameLevel() + 2)
     f.mBorder = NewNine(bf, "OVERLAY", 0)
 
+    -- Queued spell: icon at the right end of the first lane (the queue-window
+    -- end of the bar), above the fill and text, below the frame art.
+    local q = CreateFrame("Frame", nil, f)
+    q:SetFrameLevel(f.strip:GetFrameLevel() + 1)
+    q.border = q:CreateTexture(nil, "BACKGROUND")
+    q.border:SetAllPoints()
+    q.border:SetColorTexture(0, 0, 0, 0.9)
+    q.icon = q:CreateTexture(nil, "ARTWORK")
+    q.icon:SetPoint("TOPLEFT", 1, -1)
+    q.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    q.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    q:Hide()
+    f.queued = q
+
     -- Mover overlay (unlocked / Edit Mode)
     local m = CreateFrame("Frame", nil, f)
     m:SetAllPoints()
@@ -467,6 +481,14 @@ function Bar:Layout(mode)
             sb.spark:SetSize(math.max(8, math.floor(h * 0.9)), h * 2.2)
         end
     end
+
+    -- Queued icon: square, the height of the first lane, at its right end.
+    local qh = (mode == "dual") and (ch - 1 - laneH) or ch
+    f.queued:ClearAllPoints()
+    f.queued:SetPoint("TOPRIGHT", area, "TOPRIGHT", 0, 0)
+    f.queued:SetSize(qh, qh)
+    f.queuedW = qh
+    f.queuedSpell = false -- re-apply the queued anchor after relayout
 
     local strip = f.strip
     strip:ClearAllPoints()
@@ -747,6 +769,7 @@ function Bar:BuildView(now)
     local main = view.main
     wipe(main)
     view.strip = nil
+    view.queued = nil
     if ns.TestMode.active then
         ns.TestMode:BuildView(now, view)
     else
@@ -764,6 +787,7 @@ function Bar:BuildView(now)
         end
     end
     if not ns.db.showStrip then view.strip = nil end
+    if not ns.TestMode.active and ns.db.showQueued then view.queued = ns.Cast:GetQueued(now) end
     if #main == 0 and ((not ns.db.locked) or self.editMode) then
         placeholder.color = ns.db.colors.cast
         main[1] = placeholder
@@ -778,6 +802,25 @@ function Bar:SetIcon(icon)
     f.iconCur, f.iconSet = C.Readable(icon) and icon or nil, true
     f.icon:SetTexture(icon)
     f.icon:SetShown(icon ~= nil)
+end
+
+-- Shows/hides the queued spell icon; the first lane's time text moves left
+-- of it so nothing overlaps.
+function Bar:SetQueued(q)
+    local f = self.frame
+    local icon = q and q.icon
+    if f.queuedSpell == q and f.queuedIcon == icon then return end
+    f.queuedSpell, f.queuedIcon = q, icon
+    local sb = f.lanes[1]
+    if q then
+        f.queued.icon:SetTexture(icon or 134400) -- question mark if unknown
+        f.queued:Show()
+        sb.right:SetPoint("RIGHT", -(f.queuedW or 0) - 4, 0)
+    else
+        f.queued:Hide()
+        sb.right:SetPoint("RIGHT", -3, 0)
+    end
+    FitText(sb)
 end
 
 -- When idle the update loop sleeps; any game event (or ns:Wake) restarts it.
@@ -802,6 +845,7 @@ function Bar:Update(elapsed)
         RenderLane(f.lanes[1], main[1], now)
         if n >= 2 then RenderLane(f.lanes[2], main[2], now) elseif f.lanes[2].lane then ClearLane(f.lanes[2]) end
         if v.strip then RenderLane(f.strip, v.strip, now) elseif f.strip.lane then ClearLane(f.strip) end
+        self:SetQueued(v.queued)
         if ns.db.showIcon then self:SetIcon(main[1].icon) end
     end
 
@@ -820,6 +864,7 @@ function Bar:Update(elapsed)
         if not f.cleared then
             f.cleared = true
             ClearLane(f.lanes[1]); ClearLane(f.lanes[2]); ClearLane(f.strip)
+            self:SetQueued(nil)
             self:SetIcon(nil)
         end
         self.sleeping = true

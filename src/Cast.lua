@@ -114,6 +114,7 @@ function Cast:Begin(kind, castGUID, spellID)
     l.state = "active"
     l.castGUID = (castGUID and C.Readable(castGUID) and castGUID) or info.castGUID
     l.spellID = spellID or info.spellID
+    if l.spellID then self:ClearQueued(l.spellID) end -- the queued spell started
     l.label = info.text or info.name or ""
     l.name = info.name
     l.icon = info.icon
@@ -374,6 +375,74 @@ function Cast:OnMeleeSwing(now)
 end
 
 ---------------------------------------------------------------------------
+-- Queued spell
+-- Pressing a spell during a cast/channel or the GCD (inside the spell queue
+-- window) queues it. C_Spell.IsCurrentSpell() is true for a spell that is
+-- "being cast or queued to be cast" (it is what lights action buttons), and
+-- CURRENT_SPELL_CAST_CHANGED fires when the queue changes. The press itself
+-- names the candidate: UNIT_SPELLCAST_SENT and SPELL_UPDATE_COOLDOWN both
+-- fire on the key press (the latter confirmed in the log), the cooldown event
+-- also for pet spells, which IsCurrentSpell then rules out.
+---------------------------------------------------------------------------
+Cast.queued = nil -- { id, name, icon, time }
+local candidate = {}
+local AUTO_ATTACK = { [6603] = true } -- Auto Attack is "current" while meleeing
+local loggedQueue = 0
+
+local function Busy(now)
+    return Cast.cur ~= nil or GCDRunning(now)
+end
+
+local function IsCurrent(spellID)
+    if not (C_Spell and C_Spell.IsCurrentSpell) then return false end
+    local ok, cur = pcall(C_Spell.IsCurrentSpell, spellID)
+    return ok and C.Readable(cur) and cur == true
+end
+
+local function LogQueue(fmt, ...)
+    if loggedQueue < 30 then
+        loggedQueue = loggedQueue + 1
+        ns:Log("queue: " .. fmt, ...)
+    end
+end
+
+function Cast:ClearQueued(spellID)
+    local q = self.queued
+    if q and (spellID == nil or q.id == spellID) then
+        self.queued = nil
+        ns:Wake()
+    end
+end
+
+function Cast:CheckQueued(source)
+    local now = GetTime()
+    local q = self.queued
+    if q and not IsCurrent(q.id) then
+        LogQueue("cleared %s (%s)", tostring(q.name), source)
+        self:ClearQueued()
+    end
+    if not self.queued and candidate.id and now - candidate.time < 0.6 and Busy(now) and IsCurrent(candidate.id) then
+        local id = candidate.id
+        self.queued = { id = id, name = C.GetSpellName(id), icon = C.GetSpellIcon(id), time = now }
+        candidate.id = nil
+        LogQueue("queued %s (%s) %.2fs before %s ends", tostring(self.queued.name), source,
+            (Cast.cur and Cast.cur.finish or gcd.finish or now) - now, Cast.cur and "cast" or "GCD")
+        ns:Wake()
+    end
+end
+
+-- A key press: remember the spell as a queue candidate when we're busy.
+local function OnPress(spellID, source)
+    if not spellID or not C.Readable(spellID) or AUTO_ATTACK[spellID] then return end
+    if ns.Data:IsRanged(spellID, C.GetSpellName(spellID)) then return end
+    if Cast.cur and Cast.cur.spellID == spellID then return end -- key spam of the current cast
+    local now = GetTime()
+    if not Busy(now) then return end
+    candidate.id, candidate.time = spellID, now
+    Cast:CheckQueued(source)
+end
+
+---------------------------------------------------------------------------
 -- Lifecycle
 ---------------------------------------------------------------------------
 function Cast:Enable()
@@ -417,6 +486,18 @@ function Cast:Enable()
     end, P)
     ns:On("UNIT_SPELLCAST_SUCCEEDED", OnSucceeded, P)
     ns:On("SPELL_UPDATE_COOLDOWN", OnCooldownUpdate)
+
+    -- Queued spell
+    ns:On("UNIT_SPELLCAST_SENT", function(_, _, _, _, spellID) OnPress(spellID, "sent") end, P)
+    ns:On("SPELL_UPDATE_COOLDOWN", function(_, spellID) OnPress(spellID, "cooldown") end)
+    ns:On("CURRENT_SPELL_CAST_CHANGED", function(_, cancelled)
+        Cast:CheckQueued(cancelled and "cancelled" or "changed")
+    end)
+    -- The queued spell going off ends its "queued" state.
+    ns:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, spellID)
+        if C.Readable(spellID) then Cast:ClearQueued(spellID) end
+    end, P)
+    ns:On("PLAYER_DEAD", function() Cast:ClearQueued() end)
     ns:On("PLAYER_ENTERING_WORLD", function()
         Cast.cur, Cast.hold = nil, nil
         if UnitChannelInfo("player") then Cast:Begin("channel")
@@ -447,6 +528,17 @@ function Cast:GetLane(now)
         end
         self.hold = nil
     end
+end
+
+-- The queued spell, if still valid. Safety: never outlive the cast/GCD it
+-- was queued behind by more than a moment.
+function Cast:GetQueued(now)
+    local q = self.queued
+    if q and not Busy(now - 0.5) then
+        self.queued = nil
+        return nil
+    end
+    return q
 end
 
 function Cast:GetGCDLane(now)

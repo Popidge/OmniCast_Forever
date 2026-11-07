@@ -89,7 +89,12 @@ function C.WorldLatency()
     return ms / 1000
 end
 
+-- Spell queue window in seconds: the client's own value, else the CVar.
 function C.SpellQueueWindow()
+    if C_Spell and C_Spell.GetSpellQueueWindow then
+        local ok, ms = pcall(C_Spell.GetSpellQueueWindow)
+        if ok and type(ms) == "number" and C.Readable(ms) and ms > 0 then return ms / 1000 end
+    end
     local v = tonumber(GetCVar and GetCVar("SpellQueueWindow"))
     return (v or 400) / 1000
 end

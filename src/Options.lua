@@ -115,6 +115,8 @@ local function Build()
     Check("showQueueWindow", "Spell queue marker",
         "Line showing when you can press your next spell (SpellQueueWindow).")
     Check("showTicks", "Channel ticks")
+    Check("showQueued", "Queued spell",
+        "When you press your next spell during a cast or the GCD, show its icon at the end of the bar until it goes off.")
     Check("showPushback", "Pushback",
         "When damage delays your cast (or cuts a channel short): flash the bar and show the total delay next to the time.")
     Check("showTarget", "Spell target", "Show who you're casting at, on the right of the bar.")

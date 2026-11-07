@@ -10,6 +10,7 @@ T.active = false
 local t0
 local DURATION = 16.5
 local lanes = {}
+local demoQueued = {}
 
 local function Lane(key)
     local l = lanes[key]
@@ -66,6 +67,11 @@ function T:BuildView(now, view)
         l.latency = 0.12
         l.queue = C.SpellQueueWindow()
         l.target = "Training Dummy"
+        if t >= 1.8 then
+            -- Fire Blast pressed inside the queue window: shown as queued.
+            demoQueued.name, demoQueued.icon = C.GetSpellName(2136) or "Fire Blast", C.GetSpellIcon(2136)
+            view.queued = demoQueued
+        end
         if t >= 0.9 then
             l.finish, l.delay, l.pushAt = l.finish + 0.4, 0.4, t0 + 0.9
         end

@@ -10,7 +10,7 @@
 ## Next
 
 1. **Look and feel.** ~~Modern style from Forever's own art~~ (v0.3.0). ~~Edit Mode integration~~ (v0.4.0). Still to do: a colour picker for the flat styles (low priority). A Classic (vanilla art) style is deferred: Forever's Classic/Modern presets only differ in layout, and both use the modern cast bar art.
-2. **Queued spell display.** When the next spell is pressed during the spell-queue window, show it (icon and name) at the end of the bar. Forever reports the press through `SPELL_UPDATE_COOLDOWN` and `UNIT_SPELLCAST_SENT`.
+2. ~~**Queued spell display.**~~ (v0.5.0) When the next spell is pressed during the spell-queue window, show it (icon and name) at the end of the bar. Forever reports the press through `SPELL_UPDATE_COOLDOWN` and `UNIT_SPELLCAST_SENT`.
 
 ## Later
 
