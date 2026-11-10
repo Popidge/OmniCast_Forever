@@ -78,6 +78,12 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
   - `IsCurrentSpell`; `SetTimerDuration` worked.
 - `IsCurrentSpell` is briefly true for a press *outside* the queue window too: an instant mid-channel goes off at once and cuts the channel, key spam is rejected, and a spell's own post-success event lands. Queue detection must apply the window to every press.
 
+## Dual wield and Slam (v0.5.5 logs, warrior levels 21–24)
+
+- Dual wield: `PLAYER_SWING(2, 0)` and `PLAYER_SWING(1.9, 1)` arrive separately for each hand, with each weapon's own speed. The off hand runs independently.
+- Slam is a hard cast here (spell 1240193, about 1.5s). No swing lands during the cast. After it completes, the main hand swings one full speed later (+1.93 to 2.01s on a 2.0s weapon). The off hand swings about **half** its speed later (+0.93 to 0.96s on 1.9s), in all three logged Slams.
+- Heroic Strike's `UNIT_SPELLCAST_SUCCEEDED` lands in the same frame as the main-hand `PLAYER_SWING`.
+
 ## Still open
 
 1. Is the `SPELL_UPDATE_COOLDOWN` payload (`startRecoveryCategory`) readable in combat? It's logged.

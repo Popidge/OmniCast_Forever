@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.6
+
+- **Fixed:** after a hard cast in melee (warrior Slam), the swing timers showed "ready" until the next swing landed. They now restart when the cast completes, matching the warrior log:
+  - The main hand restarts at full weapon speed.
+  - When dual wielding, the off hand is set to swing half its speed later.
+  - The next real swing still resyncs both.
+- Confirmed in play (warrior, dual wield): `PLAYER_SWING` reports each hand separately with its own speed (main hand 2.0s, off hand 1.9s), and both lanes stay in sync.
+
 ## v0.5.5
 
 - **Fixed:** a spell pressed outside the spell queue window could show as queued. The game briefly marks it as current anyway, so the icon flickered. This happened for instants pressed mid-channel (they go off at once and cut the channel), for key spam early in a cast, and for a spell's own cooldown event at the start of its GCD (all in the Ragefire Chasm log). Every press now has to fall inside the queue window, not just repeats of the current spell.

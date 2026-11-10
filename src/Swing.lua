@@ -216,11 +216,25 @@ function Swing:Enable()
     end)
 end
 
--- A completed hard cast restarts melee swings in Classic; only matters for prediction.
+-- A completed hard cast (e.g. warrior Slam) restarts melee swings. Log
+-- (v0.5.5, three Slams while dual wielding): no swings land during the cast;
+-- the main hand swings one full speed after it ends, the off hand half its
+-- speed after. PLAYER_SWING only fires on the swing itself, so without this
+-- the bar would show "ready" until the next swing instead of the new timer.
 function Swing:OnCastCompleted()
-    if self.nativeMelee or not self.meleeOn then return end
-    self:Start("mh", true)
-    if self:IsDualWield() then self:Start("oh", true) end
+    if not self.meleeOn then return end
+    local predicted = not self.nativeMelee
+    local now = GetTime()
+    self:Start("mh", predicted, now)
+    if self:IsDualWield() then
+        local t = timers.oh
+        local dur = self.speed.oh
+        if predicted or not dur then
+            self:Start("oh", predicted, now)
+        elseif not (t.finish and t.finish > now + dur / 2) then
+            self:Start("oh", false, now + dur / 2 - dur)
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
