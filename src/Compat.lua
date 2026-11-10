@@ -110,6 +110,20 @@ function C.MeleeSpeeds()
     return mh, oh
 end
 
+-- Whether the off-hand slot holds a weapon: true/false, nil when unknown.
+-- Unlike the off-hand speed (a secret stat in combat), the equipped item
+-- tells us about mid-combat weapon swaps.
+function C.OffHandIsWeapon()
+    local ok, id = pcall(GetInventoryItemID, "player", 17)
+    if not ok or not C.Readable(id) then return nil end
+    if id == nil then return false end
+    local info = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not info then return nil end
+    local ok2, _, _, _, _, _, classID = pcall(info, id)
+    if not ok2 or not C.Readable(classID) or classID == nil then return nil end
+    return classID == ((Enum and Enum.ItemClass and Enum.ItemClass.Weapon) or 2)
+end
+
 -- Forever's UnitAttackSpeed returns (mainHand, offHand, ranged).
 -- Always returns exactly one value (nil when unknown).
 function C.RangedSpeed()

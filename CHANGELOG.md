@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.7
+
+- **Fixed:** swapping from dual wield to a two-hander (or a shield) in combat left the split off-hand lane up until combat ended. Dual wield was detected from the off-hand speed, which is a secret stat in combat. It now comes from the item in the off-hand slot, read on every equipment change. Swapping to dual wield in combat shows the off-hand lane straight away; its timer starts at the first off-hand swing.
+- The log records weapon-slot changes, and whether the off hand was readable.
+
 ## v0.5.6
 
 - **Fixed:** after a hard cast in melee (warrior Slam), the swing timers showed "ready" until the next swing landed. They now restart when the cast completes, matching the warrior log:

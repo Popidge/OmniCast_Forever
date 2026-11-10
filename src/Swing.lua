@@ -53,9 +53,19 @@ function Swing:RefreshSpeeds()
     end
     local r = C.RangedSpeed()
     if r then self.speed.ranged = r end
+    -- Speeds are secret in combat, so a mid-combat swap from dual wield to a
+    -- two-hander (or a shield) would otherwise keep the old off-hand lane.
+    self.offHandWeapon = C.OffHandIsWeapon()
+    if self.offHandWeapon == false then
+        self.speed.oh = nil
+        self:Clear("oh")
+    end
 end
 
+-- The equipped off hand decides when readable; the off-hand speed (from
+-- UnitAttackSpeed or the first off-hand PLAYER_SWING) is the fallback.
 function Swing:IsDualWield()
+    if self.offHandWeapon ~= nil then return self.offHandWeapon end
     return self.speed.oh ~= nil
 end
 
@@ -207,7 +217,13 @@ function Swing:Enable()
         local r = C.RangedSpeed()
         if r then Rescale("ranged", r); Swing.speed.ranged = r end
     end, "player")
-    ns:On("PLAYER_EQUIPMENT_CHANGED", function() Swing:RefreshSpeeds(); Swing:RefreshIcons() end)
+    ns:On("PLAYER_EQUIPMENT_CHANGED", function(_, slot)
+        Swing:RefreshSpeeds(); Swing:RefreshIcons()
+        if slot == 16 or slot == 17 then
+            ns:Log("weapon slot %s changed: off-hand weapon=%s, dual wield=%s, in combat=%s",
+                C.Show(slot), C.Show(Swing.offHandWeapon), tostring(Swing:IsDualWield()), tostring(InCombatLockdown()))
+        end
+    end)
     self:RefreshIcons()
     ns:On("PLAYER_TARGET_CHANGED", function() Swing:QueryRange() end)
     ns:On("PLAYER_DEAD", function()
