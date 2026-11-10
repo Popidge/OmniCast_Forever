@@ -109,7 +109,16 @@ function T:BuildView(now, view)
         main[1] = l
     else
         local mh = Looping(Lane("mh"), t, 12.0, 2.6)
-        mh.label, mh.color, mh.icon, mh.fill = SWING_TIMER_MAIN_HAND or "Main Hand", colors.mainhand, C.SlotIcon(16), "mh"
+        mh.color, mh.fill = colors.mainhand, "mh"
+        -- Heroic Strike pressed mid-swing, armed until the swing at 17.2s.
+        local armed = ns.db.showNextSwing and t >= 15.4 and t < 17.2
+        if armed then
+            Spell(mh, 78, "Heroic Strike")
+        else
+            mh.label, mh.icon = SWING_TIMER_MAIN_HAND or "Main Hand", C.SlotIcon(16)
+        end
+        if mh.armed ~= (armed or nil) then mh.serial = (mh.serial or 0) + 1 end
+        mh.armed = armed or nil
         local oh = Looping(Lane("oh"), t, 12.2, 1.9)
         oh.label, oh.color, oh.fill = SWING_TIMER_OFF_HAND or "Off Hand", colors.offhand, "oh"
         main[1], main[2] = mh, oh

@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.0: Next-swing abilities
+
+- **New: armed next swing** (on by default). While Heroic Strike, Cleave, Maul or Raptor Strike waits for your next swing:
+  - The main-hand bar shows the ability's name and icon.
+  - The bar pulses gently in gold.
+  - It returns to normal when the swing lands, or when the ability is cancelled or fails (e.g. not enough rage).
+  - Detection uses the same "current spell" check that lights the ability's action button.
+- These abilities no longer show up as a queued spell.
+- `/oc test` arms Heroic Strike during the dual-wield part.
+- Setting: Settings > Swing timers > Next-swing abilities.
+- Confirmed in play: mid-combat weapon swaps (v0.5.7). The off-hand item is readable in combat, and the split bar follows swaps in both directions.
+
 ## v0.5.7
 
 - **Fixed:** swapping from dual wield to a two-hander (or a shield) in combat left the split off-hand lane up until combat ended. Dual wield was detected from the off-hand speed, which is a secret stat in combat. It now comes from the item in the off-hand slot, read on every equipment change. Swapping to dual wield in combat shows the off-hand lane straight away; its timer starts at the first off-hand swing.

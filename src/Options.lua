@@ -125,6 +125,8 @@ local function Build()
     Header("Swing timers")
     Check("showMelee", "Melee swings")
     Check("showRanged", "Ranged / wand shots")
+    Check("showNextSwing", "Next-swing abilities",
+        "While Heroic Strike, Cleave, Maul or Raptor Strike waits for your next swing, the main-hand bar glows and shows its name and icon.")
     Dropdown("dualLayout", "Dual wield", function()
         return { { "split", "Split bar (main + off hand)" }, { "main", "Main hand only" } }
     end)

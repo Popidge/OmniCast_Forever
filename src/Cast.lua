@@ -452,6 +452,9 @@ end
 local function OnPress(spellID, source, castGUID)
     if not spellID or not C.Readable(spellID) or AUTO_ATTACK[spellID] then return end
     if ns.Data:IsRanged(spellID, C.GetSpellName(spellID)) then return end
+    -- Heroic Strike & co. wait for the next swing, not the queue: the swing
+    -- lane shows them (Swing:CheckArmed).
+    if ns.Data:IsNextSwing(spellID, C.GetSpellName(spellID)) then return end
     local now = GetTime()
     if not Busy(now) then return end
     local cur = Cast.cur

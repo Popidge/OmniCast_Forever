@@ -11,6 +11,7 @@
 
 1. **Look and feel.** ~~Modern style from Forever's own art~~ (v0.3.0). ~~Edit Mode integration~~ (v0.4.0). Still to do: a colour picker for the flat styles (low priority). A Classic (vanilla art) style is deferred: Forever's Classic/Modern presets only differ in layout, and both use the modern cast bar art.
 2. ~~**Queued spell display.**~~ (v0.5.0) When the next spell is pressed during the spell-queue window, show it (icon and name) at the end of the bar. Forever reports the press through `SPELL_UPDATE_COOLDOWN` and `UNIT_SPELLCAST_SENT`.
+3. ~~**Armed next swing.**~~ (v0.6.0) Heroic Strike/Cleave/Maul/Raptor Strike waiting for the swing: the main-hand lane glows and shows the ability.
 
 ## Later
 
@@ -22,7 +23,7 @@
 ## When testable
 
 - **Hunter Auto Shot window.** Mark the last 0.5s "don't move" part of the shot. Needs a hunter to test.
-- **Dual wield**, and **instance restrictions** (Ragefire Chasm at around level 15).
+- ~~**Dual wield**~~ (confirmed, including mid-combat swaps, v0.5.7) and ~~**instance restrictions**~~ (Ragefire Chasm and Deadmines, v0.5.5).
 
 ## Rejected
 

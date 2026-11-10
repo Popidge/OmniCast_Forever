@@ -132,6 +132,10 @@ local function OnPlayerSwing(_, duration, swingType)
     else
         Swing.nativeMelee = true
         ns.Cast:OnMeleeSwing(GetTime())
+        -- The armed ability went off with this swing, or fizzled (no rage).
+        if hand == "mh" and Swing.armed then
+            C_Timer.After(0, function() ns.SafeCall(Swing.CheckArmed, Swing, "main-hand swing") end)
+        end
     end
     Swing:Start(hand, false)
 end
@@ -202,7 +206,23 @@ function Swing:Enable()
             if Swing:IsDualWield() then Swing:Start("oh", true) end
         end
     end)
-    ns:On("PLAYER_LEAVE_COMBAT", function() Swing.meleeOn = false end)
+    ns:On("PLAYER_LEAVE_COMBAT", function() Swing.meleeOn = false; Swing:CheckArmed("melee stopped") end)
+
+    -- Armed next swing: re-check whenever the game's current/queued spell
+    -- state may have changed, and after each main-hand swing.
+    ns:On("CURRENT_SPELL_CAST_CHANGED", function() Swing:CheckArmed("changed") end)
+    ns:On("ACTIONBAR_UPDATE_STATE", function() Swing:CheckArmed("action state") end)
+    ns:On("SPELL_UPDATE_COOLDOWN", function(_, spellID)
+        if C.Readable(spellID) and spellID and ns.Data:IsNextSwing(spellID, C.GetSpellName(spellID)) then
+            Swing:CheckArmed("press")
+        end
+    end)
+    ns:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, spellID)
+        if C.Readable(spellID) and ns.Data:IsNextSwing(spellID, C.GetSpellName(spellID)) then
+            Swing:CheckArmed("swing landed")
+        end
+    end, "player")
+    ns:On("UNIT_SPELLCAST_FAILED", function() if Swing.armed then Swing:CheckArmed("failed") end end, "player")
     ns:On("START_AUTOREPEAT_SPELL", function() Swing.rangedOn = true; Swing:RefreshSpeeds() end)
     ns:On("STOP_AUTOREPEAT_SPELL", function() Swing.rangedOn = false end)
 
@@ -228,8 +248,44 @@ function Swing:Enable()
     ns:On("PLAYER_TARGET_CHANGED", function() Swing:QueryRange() end)
     ns:On("PLAYER_DEAD", function()
         Swing.meleeOn, Swing.rangedOn = false, false
+        Swing.armed = nil
         for _, h in ipairs(HANDS) do Swing:Clear(h) end
     end)
+end
+
+---------------------------------------------------------------------------
+-- Armed next swing (Heroic Strike, Cleave, Maul, Raptor Strike)
+---------------------------------------------------------------------------
+-- These replace the next melee swing. While one waits for the swing the game
+-- reports it as the current spell (the same check that lights its action
+-- button); it ends when the swing lands, it is cancelled, or rage runs out.
+Swing.armed = nil -- { name, icon }
+local loggedArmed = 0
+ns:OnLogReset(function() loggedArmed = 0 end)
+
+local function IsCurrentName(name)
+    if not (C_Spell and C_Spell.IsCurrentSpell) then return false end
+    local ok, cur = pcall(C_Spell.IsCurrentSpell, name)
+    return ok and C.Readable(cur) and cur == true
+end
+
+function Swing:CheckArmed(reason)
+    local found
+    for name in pairs(ns.Data:NextSwingNames()) do
+        if IsCurrentName(name) then found = name break end
+    end
+    local was = self.armed and self.armed.name
+    if found == was then return end
+    if found then
+        self.armed = { name = C.GetSpellName(found) or found, icon = C.GetSpellIcon(found) }
+    else
+        self.armed = nil
+    end
+    if loggedArmed < 30 then
+        loggedArmed = loggedArmed + 1
+        ns:Log("next swing: %s (%s)", found and ("armed " .. found) or ("cleared " .. tostring(was)), reason)
+    end
+    ns:Wake()
 end
 
 -- A completed hard cast (e.g. warrior Slam) restarts melee swings. Log
@@ -279,10 +335,10 @@ function Swing:RefreshIcons()
     for _, slot in ipairs({ 16, 17, 18 }) do slotIcons[slot] = C.SlotIcon(slot) end
 end
 
-local function FillLane(lane, hand, now, label, colorKey, on, slot)
+local function FillLane(lane, hand, now, label, colorKey, on, slot, iconOverride)
     local t = timers[hand]
     local colors = ns.db.colors
-    local icon = slotIcons[slot]
+    local icon = iconOverride or slotIcons[slot]
     if lane.label ~= label or lane.icon ~= icon then
         lane.serial = (lane.serial or 0) + 1 -- static parts changed: bar redraws them
     end
@@ -331,7 +387,12 @@ function Swing:GetLanes(now, out)
             out[1] = lanes.ranged
         end
     elseif meleeLive then
-        if FillLane(lanes.mh, "mh", now, SWING_TIMER_MAIN_HAND or "Main Hand", "mainhand", self.meleeOn, 16) then
+        -- An armed next-swing ability takes over the main-hand label and icon,
+        -- and the bar glows (lane.armed) until the swing lands.
+        local armed = db.showNextSwing and self.armed
+        local mhLabel = armed and armed.name or SWING_TIMER_MAIN_HAND or "Main Hand"
+        if FillLane(lanes.mh, "mh", now, mhLabel, "mainhand", self.meleeOn, 16, armed and armed.icon) then
+            lanes.mh.armed = armed and true or nil
             out[#out + 1] = lanes.mh
         end
         if self:IsDualWield() and db.dualLayout == "split" then

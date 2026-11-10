@@ -85,6 +85,12 @@ function Data:IsNextSwing(spellID, name)
     return name ~= nil and Data.nextSwingByName[name] == true
 end
 
+-- Names of the on-next-swing abilities (English and client-localised), for
+-- C_Spell.IsCurrentSpell, which resolves a name to the player's known rank.
+function Data:NextSwingNames()
+    return Data.nextSwingByName
+end
+
 function Data:IsRanged(spellID, name)
     if spellID and Data.RANGED_SPELLS[spellID] then return true end
     return name ~= nil and Data.rangedByName[name] == true

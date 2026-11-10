@@ -221,6 +221,13 @@ local function CreateLane(parent, isStrip)
         sb.flash:SetBlendMode("ADD")
         sb.flash:Hide()
 
+        -- Armed next swing (Heroic Strike...): soft pulsing glow over the lane.
+        sb.glow = sb:CreateTexture(nil, "OVERLAY", nil, 0)
+        sb.glow:SetAllPoints()
+        sb.glow:SetColorTexture(1, 1, 1, 1)
+        sb.glow:SetBlendMode("ADD")
+        sb.glow:Hide()
+
         local holder = CreateFrame("Frame", nil, sb)
         holder:SetAllPoints()
         holder:SetFrameLevel(sb:GetFrameLevel() + 3)
@@ -759,6 +766,15 @@ local function RenderLane(sb, lane, now)
             sb.flash:Show()
         elseif sb.flash:IsShown() then
             sb.flash:Hide()
+        end
+
+        if lane.armed then
+            local gc = db.colors.nextSwing
+            local pulse = 0.5 + 0.5 * math.sin(now * 5.2) -- ~1.2s cycle
+            sb.glow:SetVertexColor(gc[1], gc[2], gc[3], 0.10 + 0.14 * pulse)
+            if not sb.glow:IsShown() then sb.glow:Show() end
+        elseif sb.glow:IsShown() then
+            sb.glow:Hide()
         end
 
         local r = lane.rightText
