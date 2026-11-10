@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.1 (review fixes)
+
+- **Fixed:** in Edit Mode, "Switch without saving" kept OmniCast's discarded changes, and saving the next layout then saved them too. Blizzard switches layouts without calling `RevertAllChanges`, so the switch itself now restores the pending position and size.
+- **Fixed:** a short cast (0.4s Corruption) measured the queue window against the cast's end, not the GCD, which runs longer. Pressing again early could show a queued repeat while 1.3s of GCD remained. Both queue checks now use whichever ends later, the cast or the GCD.
+- **Fixed:** replacing a queued repeat (Frostbolt behind Frostbolt, then another spell) kept showing Frostbolt. A confirmed different spell now replaces it.
+
 ## v0.6.0: Next-swing abilities
 
 - **New: armed next swing** (on by default). While Heroic Strike, Cleave, Maul or Raptor Strike waits for your next swing:

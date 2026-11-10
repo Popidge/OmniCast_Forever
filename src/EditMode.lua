@@ -411,7 +411,26 @@ end
 
 function EM:Snapshot()
     self.snap = CopyGeometry()
+    self.snapLayout = self:LayoutKey()
     self.dirty = false
+end
+
+-- Layout switched or reloaded (UpdateLayoutInfo). "Switch without saving"
+-- goes SelectLayout -> C_EditMode.SetActiveLayout and never calls
+-- RevertAllChanges, so pending changes made in the old layout are discarded
+-- here, as Blizzard discards its own frames' changes.
+local function OnLayoutInfo()
+    if EM.active and EM.snap then
+        local key = EM:LayoutKey()
+        if key ~= EM.snapLayout then
+            if EM.dirty then
+                ApplyGeometry(EM.snap)
+                ns:Log("Edit Mode layout switch: discarded unsaved OmniCast changes")
+            end
+            EM:Snapshot()
+        end
+    end
+    if ns.Bar.frame then ns.Bar:ApplyPosition() end
 end
 
 function EM:MarkDirty()
@@ -518,9 +537,7 @@ function EM:Enable()
 
     if EditModeManagerFrame.UpdateLayoutInfo then
         -- Layout switched/loaded: move to that layout's saved position.
-        hooksecurefunc(EditModeManagerFrame, "UpdateLayoutInfo", function()
-            if ns.Bar.frame then ns.Bar:ApplyPosition() end
-        end)
+        hooksecurefunc(EditModeManagerFrame, "UpdateLayoutInfo", OnLayoutInfo)
     end
     ns.Bar:ApplyPosition()
     if EditModeActive() then self:OnEnter() end

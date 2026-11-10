@@ -402,6 +402,15 @@ local function Busy(now)
     return Cast.cur ~= nil or GCDRunning(now)
 end
 
+-- When the next spell can go off: the later of the cast and the GCD. A short
+-- cast (0.4s Corruption) ends well before its 1.5s GCD.
+local function BusyUntil()
+    local cf = Cast.cur and Cast.cur.finish
+    local gf = gcd.finish
+    if cf and gf then return math.max(cf, gf) end
+    return cf or gf
+end
+
 local function IsCurrent(spellID)
     if not (C_Spell and C_Spell.IsCurrentSpell) then return false end
     local ok, cur = pcall(C_Spell.IsCurrentSpell, spellID)
@@ -437,13 +446,19 @@ function Cast:CheckQueued(source)
     -- Never "queue" the spell that is being cast right now (IsCurrentSpell
     -- is true for it too); repeats are handled in OnPress.
     local castingIt = Cast.cur and Cast.cur.spellID == candidate.id
-    if not self.queued and candidate.id and not castingIt and now - candidate.time < 0.6
+    -- A confirmed different spell replaces a queued repeat (the game keeps
+    -- only the latest press); a repeat can't be validated, so it can't clear
+    -- itself above.
+    local q2 = self.queued
+    local free = not q2 or (q2.repeat_ and q2.id ~= candidate.id)
+    if free and candidate.id and not castingIt and now - candidate.time < 0.6
         and Busy(now) and IsCurrent(candidate.id) then
         local id = candidate.id
+        if q2 then LogQueue("replaced repeat %s", tostring(q2.name)) end
         self.queued = { id = id, name = C.GetSpellName(id), icon = C.GetSpellIcon(id), time = now }
         candidate.id = nil
         LogQueue("queued %s (%s) %.2fs before %s ends", tostring(self.queued.name), source,
-            (Cast.cur and Cast.cur.finish or gcd.finish or now) - now, Cast.cur and "cast" or "GCD")
+            (BusyUntil() or now) - now, Cast.cur and "cast" or "GCD")
         ns:Wake()
     end
 end
@@ -471,7 +486,7 @@ local function OnPress(spellID, source, castGUID)
         -- queue window (e.g. talented 0.4s Corruption) would otherwise look
         -- like a repeat press, so ignore the cast's first moment.
         if cur.began and now - cur.began < 0.1 then return end
-        local left = cur.finish - now
+        local left = (BusyUntil() or cur.finish) - now
         if left > C.SpellQueueWindow() or left < 0.03 then return end
         if Cast.queued and Cast.queued.id == spellID then return end
         Cast.queued = { id = spellID, name = C.GetSpellName(spellID), icon = C.GetSpellIcon(spellID),
@@ -485,7 +500,7 @@ local function OnPress(spellID, source, castGUID)
     -- the spell is briefly "current" anyway (instants pressed mid-channel go
     -- off at once and cut it; key spam mid-cast is rejected; a spell's own
     -- post-success event lands at the start of its GCD), which isn't a queue.
-    local finish = cur and cur.finish or gcd.finish
+    local finish = BusyUntil()
     if finish and finish - now > C.SpellQueueWindow() + 0.1 then
         candidate.id = nil
         return
