@@ -77,6 +77,12 @@ function Debug:Enable()
             ns:Log("encounter: secret? %s", Debug:SecretState())
         end)
     end)
+    -- Taint: record which protected call was blocked, with combat state.
+    local function Blocked(event, addon, func)
+        ns:Log("%s: addon=%s func=%s in combat=%s", event, C.Show(addon), C.Show(func), tostring(InCombatLockdown()))
+    end
+    ns:On("ADDON_ACTION_BLOCKED", Blocked)
+    ns:On("ADDON_ACTION_FORBIDDEN", Blocked)
     ns:On("ENCOUNTER_END", function(_, encounterID, encounterName, _, _, success)
         ns:Log("=== encounter end: %s (%s) success=%s ===", C.Show(encounterName), C.Show(encounterID), C.Show(success))
     end)

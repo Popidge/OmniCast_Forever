@@ -138,7 +138,8 @@ local function Build()
 
     Header("Blizzard UI")
     Check("hideBlizzardCastbar", "Hide Blizzard cast bar", "Turning this off takes effect after /reload.")
-    Check("hideBlizzardSwing", "Hide Blizzard swing timer")
+    Check("hideBlizzardSwing", "Hide Blizzard swing timer",
+        "Makes it invisible. To free its space at the bottom of the screen too, turn off Swing Timer in the game's own options.")
 
     Settings.RegisterAddOnCategory(category)
     Options.category = category

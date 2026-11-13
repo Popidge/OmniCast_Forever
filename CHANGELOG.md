@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.2 (taint fix)
+
+- **Fixed:** "OmniCast Forever has been blocked from an action" could appear, e.g. while browsing the game options. The Blizzard cast bar and swing timer sit in the same bottom layout as the protected action bars, and OmniCast hid them with `Hide()`, which re-ran that layout from addon code. They are now made invisible (alpha 0) instead, leaving Blizzard's layout alone. In Edit Mode they keep their normal look so they can still be moved.
+- Turning "Hide Blizzard swing timer" off now brings it back straight away.
+- An invisible Blizzard swing timer still takes its space at the bottom of the screen in combat. To free it, turn off Swing Timer in the game's own options.
+- The log records any blocked action (`ADDON_ACTION_BLOCKED`/`FORBIDDEN`) with the function name and combat state.
+
 ## v0.6.1 (review fixes)
 
 - **Fixed:** in Edit Mode, "Switch without saving" kept OmniCast's discarded changes, and saving the next layout then saved them too. Blizzard switches layouts without calling `RevertAllChanges`, so the switch itself now restores the pending position and size.
