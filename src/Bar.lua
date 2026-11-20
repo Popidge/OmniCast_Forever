@@ -648,14 +648,20 @@ local function UpdateMarkers(sb, lane, dur, w)
     HideMarkers(sb)
     if sb.isStrip or not dur or dur <= 0 then return end
 
+    -- End zone: latency on casts, the Auto Shot wind-up on the ranged lane.
+    local zone, zc
     if db.showLatency and lane.latency then
+        zone, zc = lane.latency, db.colors.latency
+    elseif lane.windup then
+        zone, zc = lane.windup, db.colors.windup
+    end
+    if zone then
         local side = lane.reverse and "LEFT" or "RIGHT"
         sb.lat:ClearAllPoints()
         sb.lat:SetPoint("TOP" .. side)
         sb.lat:SetPoint("BOTTOM" .. side)
-        local lc = db.colors.latency
-        sb.lat:SetVertexColor(lc[1], lc[2], lc[3], lc[4] or 0.5)
-        sb.lat:SetWidth(math.max(1, math.min(lane.latency / dur, 1) * w))
+        sb.lat:SetVertexColor(zc[1], zc[2], zc[3], zc[4] or 0.5)
+        sb.lat:SetWidth(math.max(1, math.min(zone / dur, 1) * w))
         sb.lat:Show()
     end
 

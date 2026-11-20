@@ -22,7 +22,7 @@
 
 ## When testable
 
-- **Hunter Auto Shot window.** Mark the last 0.5s "don't move" part of the shot. Needs a hunter to test.
+- ~~**Hunter Auto Shot window.**~~ (v0.7.0) The last 0.5s of Auto Shot is marked; moving through it shows "Stop to shoot".
 - ~~**Dual wield**~~ (confirmed, including mid-combat swaps, v0.5.7) and ~~**instance restrictions**~~ (Ragefire Chasm and Deadmines, v0.5.5).
 
 ## Rejected

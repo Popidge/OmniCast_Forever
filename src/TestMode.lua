@@ -17,7 +17,7 @@ local function Lane(key)
     local l = lanes[key]
     if not l then l = { kind = "test" }; lanes[key] = l end
     l.latency, l.queue, l.ticks, l.rightText, l.value, l.reverse = nil, nil, nil, nil, nil, false
-    l.tickInterval, l.target, l.delay, l.pushAt = nil, nil, nil, nil
+    l.tickInterval, l.target, l.delay, l.pushAt, l.windup = nil, nil, nil, nil, nil
     l.alpha = 1
     return l
 end
@@ -106,6 +106,7 @@ function T:BuildView(now, view)
         local l = Spell(Timed(Lane("ranged"), 9.2, 2.8), 75, "Auto Shot")
         l.color, l.fill = colors.ranged, "ranged"
         l.icon = C.SlotIcon(18) or l.icon
+        if ns.db.showAutoShotWindow then l.windup = 0.5 end
         main[1] = l
     else
         local mh = Looping(Lane("mh"), t, 12.0, 2.6)

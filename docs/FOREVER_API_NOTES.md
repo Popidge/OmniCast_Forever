@@ -94,3 +94,11 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 
 - Saved log: `_forever_\WTF\Account\POPIDGE\SavedVariables\OmniCast_Forever.lua`. It's written on `/reload` or logout.
 - Blizzard source: `_forever_\BlizzardInterfaceCode\Interface\AddOns\`. API docs are in `Blizzard_APIDocumentationGenerated\`.
+
+## Auto Shot wind-up — confirmed (hunter L6, v0.6.3 probe)
+
+- Classic's rule holds: moving in the last ~0.5s of the Auto Shot timer interrupts the shot (`UNIT_SPELLCAST_INTERRUPTED` for spell 75, then `FAILED_QUIET` while still moving). The shot fires 0.68-0.83s after you stop: the 0.5s wind-up plus latency.
+- Moving earlier in the timer (1.8-2.0s left, stopped with 0.8-1.2s left) doesn't delay the shot.
+- There is no `UNIT_SPELLCAST_START` for the wind-up, so it can't be shown as a cast.
+- `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` fire normally in combat.
+- A run of `UNIT_SPELLCAST_FAILED` for Auto Shot followed by `STOP_AUTOREPEAT_SPELL` is the mob reaching melee range.

@@ -36,6 +36,7 @@ ns.defaults = {
     showQueued = true,          -- icon of the spell queued behind the current cast/GCD
     showPushback = true,        -- delay text + flash when damage pushes the cast back
     showTarget = false,         -- spell target name on casts/channels
+    showAutoShotWindow = true,  -- Auto Shot wind-up zone + "Stop to shoot" while moving holds the shot
     showNextSwing = true,       -- glow + name while Heroic Strike/Cleave/... waits for the swing
 
     -- what to track
@@ -61,6 +62,7 @@ ns.defaults = {
         offhand     = { 0.85, 0.35, 0.25 },
         ranged      = { 0.45, 0.75, 1.00 },
         latency     = { 1.00, 0.10, 0.10, 0.50 },
+        windup      = { 1.00, 0.85, 0.30, 0.45 },
         pushback    = { 1.00, 0.25, 0.25 },
         nextSwing   = { 1.00, 0.82, 0.30 },
         target      = { 0.85, 0.85, 0.85 },

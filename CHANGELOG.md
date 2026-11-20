@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.0: Auto Shot wind-up
+
+- **New: Auto Shot wind-up** (on by default). The last 0.5s of the Auto Shot timer is marked in amber. Moving there interrupts the shot, as in Classic. While moving holds the shot, the bar says "Stop to shoot"; the shot fires about half a second after you stop.
+- Confirmed in play with the v0.6.3 probe: moving near the end delayed shots by 0.8-1.35s, while moving earlier in the timer didn't delay them at all.
+- Bows, guns and crossbows only (Auto Shot). Wands aren't marked, since they haven't been tested.
+- `/oc test` shows the wind-up during the ranged part.
+- Setting: Settings > Swing timers > Auto Shot wind-up.
+- Removed the v0.6.3 probe.
+
 ## v0.6.3 (hunter diagnostics)
 
 - Hunter log check (level 6): Auto Shot arrives as `PLAYER_SWING` type 2 with the hasted speed (2.14s), shots land 2.11-2.21s apart, Raptor Strike arms and clears correctly, and the bar switches between ranged and melee as the target closes in.

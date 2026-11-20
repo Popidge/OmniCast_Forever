@@ -129,7 +129,6 @@ local function OnPlayerSwing(_, duration, swingType)
     end
     if hand == "ranged" then
         Swing.nativeRanged = true
-        Swing:ProbeShot(GetTime(), duration)
     else
         Swing.nativeMelee = true
         ns.Cast:OnMeleeSwing(GetTime())
@@ -166,12 +165,27 @@ function Swing:QueryRange()
     end
 end
 
+local AUTO_SHOT = 75
+-- Auto Shot's last 0.5s is a wind-up: moving then interrupts the shot, and
+-- it fires ~0.5s after you stop (confirmed in play, v0.6.3 probe).
+local AUTO_SHOT_WINDUP = 0.5
+
+local function IsAutoShot(spellID, name)
+    return spellID == AUTO_SHOT or (name ~= nil and name == C.GetSpellName(AUTO_SHOT))
+end
+
+local function AutoShotActive()
+    local ok, cur = pcall(C_Spell.IsCurrentSpell, AUTO_SHOT)
+    return ok and C.Readable(cur) and cur == true
+end
+
 local function OnSpellSucceeded(_, _, _, spellID)
     if C.IsSecret(spellID) then return end
     local name = C.GetSpellName(spellID)
     local Data = ns.Data
     if Data:IsRanged(spellID, name) then
         Swing.rangedLabel = name
+        Swing.autoShot = IsAutoShot(spellID, name)
         if not Swing.nativeRanged then Swing:Start("ranged", false) end
     elseif Data:IsNextSwing(spellID, name) and not Swing.nativeMelee then
         -- Heroic Strike & co. "succeed" on the swing itself: a free resync point.
@@ -194,7 +208,6 @@ function Swing:Enable()
     end
 
     ns:On("PLAYER_SWING", OnPlayerSwing)
-    self:EnableProbe()
     ns:On("PLAYER_SWING_RANGE_UPDATE", OnSwingRange)
     ns:On("UNIT_SPELLCAST_SUCCEEDED", OnSpellSucceeded, "player")
 
@@ -225,7 +238,12 @@ function Swing:Enable()
         end
     end, "player")
     ns:On("UNIT_SPELLCAST_FAILED", function() if Swing.armed then Swing:CheckArmed("failed") end end, "player")
-    ns:On("START_AUTOREPEAT_SPELL", function() Swing.rangedOn = true; Swing:RefreshSpeeds() end)
+    ns:On("START_AUTOREPEAT_SPELL", function()
+        Swing.rangedOn = true; Swing:RefreshSpeeds()
+        if AutoShotActive() then Swing.autoShot = true end
+    end)
+    ns:On("PLAYER_STARTED_MOVING", function() Swing.moving = true end)
+    ns:On("PLAYER_STOPPED_MOVING", function() Swing.moving = false end)
     ns:On("STOP_AUTOREPEAT_SPELL", function() Swing.rangedOn = false end)
 
     ns:On("UNIT_ATTACK_SPEED", function()
@@ -349,7 +367,7 @@ local function FillLane(lane, hand, now, label, colorKey, on, slot, iconOverride
     lane.color = colors[colorKey]
     lane.icon = icon
     lane.reverse = false
-    lane.latency, lane.queue, lane.ticks = nil, nil, nil
+    lane.latency, lane.queue, lane.ticks, lane.windup = nil, nil, nil, nil
     if t.finish and now < t.finish then
         lane.state = "active"
         lane.start, lane.finish = t.start, t.finish
@@ -386,7 +404,16 @@ function Swing:GetLanes(now, out)
 
     if rangedLive then
         if FillLane(lanes.ranged, "ranged", now, self.rangedLabel or SWING_TIMER_RANGED or "Ranged", "ranged", self.rangedOn, 18) then
-            out[1] = lanes.ranged
+            local l = lanes.ranged
+            if db.showAutoShotWindow and self.autoShot then
+                -- Mark the wind-up; moving through it holds the shot until you stop.
+                l.windup = AUTO_SHOT_WINDUP
+                local inWindup = l.state == "ready" or (l.finish and l.finish - now <= AUTO_SHOT_WINDUP)
+                if self.moving and self.rangedOn and inWindup and not l.rightText then
+                    l.rightText = "Stop to shoot"
+                end
+            end
+            out[1] = l
         end
     elseif meleeLive then
         -- An armed next-swing ability takes over the main-hand label and icon,
@@ -406,62 +433,3 @@ function Swing:GetLanes(now, out)
     return #out
 end
 
----------------------------------------------------------------------------
--- Auto Shot probe (diagnostic, hunter testing): does moving delay or cancel
--- the shot near the end of the timer, as in Classic? Logs each shot's
--- interval against the ranged speed, and movement relative to the timer.
----------------------------------------------------------------------------
-local probe = { budget = 0, moving = false, movedSince = false, lastStop = nil, lastShot = nil }
-ns:OnLogReset(function() probe.budget = 0 end)
-
-local function ProbeLog(fmt, ...)
-    if probe.budget >= 80 then return end
-    probe.budget = probe.budget + 1
-    ns:Log("auto shot: " .. fmt, ...)
-end
-
-local function ShotLeft(now)
-    local t = timers.ranged
-    if t.finish then return string.format("%.2fs left", t.finish - now) end
-    return "no timer"
-end
-
-function Swing:ProbeShot(now, duration)
-    local prev = probe.lastShot
-    probe.lastShot = now
-    if prev and self.rangedOn then
-        local interval = now - prev
-        local speed = (C.Readable(duration) and type(duration) == "number") and duration or self.speed.ranged
-        if speed and interval < speed * 3 then
-            ProbeLog("interval %.2fs (speed %.2f, %+.2f) moved=%s%s", interval, speed, interval - speed,
-                tostring(probe.movedSince or probe.moving),
-                probe.lastStop and string.format(", stopped %.2fs before shot", now - probe.lastStop) or "")
-        end
-    end
-    probe.movedSince = probe.moving
-    probe.lastStop = nil
-end
-
-local function OnMove(started)
-    probe.moving = started
-    if started then probe.movedSince = true else probe.lastStop = GetTime() end
-    if Swing.rangedOn then
-        ProbeLog("%s moving, %s", started and "started" or "stopped", ShotLeft(GetTime()))
-    end
-end
-
-local function OnRangedCastEvent(event, _, _, spellID)
-    if C.IsSecret(spellID) or not ns.Data:IsRanged(spellID, C.GetSpellName(spellID)) then return end
-    ProbeLog("%s, %s, moving=%s", event, ShotLeft(GetTime()), tostring(probe.moving))
-end
-
-function Swing:EnableProbe()
-    ns:On("PLAYER_STARTED_MOVING", function() OnMove(true) end)
-    ns:On("PLAYER_STOPPED_MOVING", function() OnMove(false) end)
-    for _, ev in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED",
-        "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_DELAYED" }) do
-        ns:On(ev, OnRangedCastEvent, "player")
-    end
-    ns:On("START_AUTOREPEAT_SPELL", function() probe.lastShot = nil; ProbeLog("auto-repeat on, moving=%s", tostring(probe.moving)) end)
-    ns:On("STOP_AUTOREPEAT_SPELL", function() ProbeLog("auto-repeat off, %s", ShotLeft(GetTime())) end)
-end

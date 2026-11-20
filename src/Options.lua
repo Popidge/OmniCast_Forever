@@ -125,6 +125,8 @@ local function Build()
     Header("Swing timers")
     Check("showMelee", "Melee swings")
     Check("showRanged", "Ranged / wand shots")
+    Check("showAutoShotWindow", "Auto Shot wind-up",
+        "Marks the last 0.5s of Auto Shot. Moving then holds the shot until you stop, and the bar says \"Stop to shoot\".")
     Check("showNextSwing", "Next-swing abilities",
         "While Heroic Strike, Cleave, Maul or Raptor Strike waits for your next swing, the main-hand bar glows and shows its name and icon.")
     Dropdown("dualLayout", "Dual wield", function()
