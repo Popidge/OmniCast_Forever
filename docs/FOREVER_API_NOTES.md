@@ -116,3 +116,21 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 - CVar `ActionButtonUseKeyHeldSpell` (Options > Combat > Press and Hold Casting). While an action key is held, the game recasts that spell at the next opportunity.
 - Nothing is queued in the game's sense. The next cast starts ~0.1s after the previous `SUCCEEDED`, and no `queue:` press is seen.
 - Key presses on Blizzard action bars all go through the global `TryUseActionButton(button, down)` (called from `ActionButtonDown/Up` and `MultiActionButtonDown/Up`). A post-hook sees key down and key up. Addon bars with `CLICK` bindings bypass it.
+
+## Warrior/rogue Shoot Bow-Gun-Crossbow and Throw — confirmed (warrior L41, v0.8.1 probe)
+
+- One shot per press, instant (`hardcast=false`), with `PLAYER_SWING(speed, 2)`. Throw was 2.10s. The weapon then cools down for its speed, and no auto-repeat events fire.
+- A press during the cooldown gives `UNIT_SPELLCAST_FAILED` (at 0.26s and 0.51s left). It is never queued, so there is no queue marker.
+- Moving changes nothing, since there is nothing running to interrupt.
+
+## Ranged summary (in play + outside sources, 2026-11-20)
+
+| Attack | Repeats | Wind-up | Moving |
+|---|---|---|---|
+| Hunter Auto Shot | yes | last ~0.5s of the timer | inside the wind-up: interrupted, then a retry ~0.5-1.0s after you stop; Auto Shot keeps going |
+| Wand Shoot | yes, while standing still | ~0.5s (first shot 0.53-0.65s after the press) | turns it off for good |
+| Shoot Bow/Gun/Crossbow, Throw | no, one press = one shot | none seen | no effect |
+
+- Blizzard (Kaivax, beta forum, 2026-09-23): the 0.5s cast before Auto Shot and wand shots "is not functioning properly", fix due. By 2026-10-21 players reported the wind-up live, with a retry quirk after moving: 0.67-0.93s after stopping, from combat logs. That matches the hunter log (0.68-0.83s).
+- Forever hunter wiki (classic-hunter/forever-hunter "Shot Mechanics"): Auto Shot cycle = ~0.5s cast + (weapon speed − cast). Auto Shot can fire during Aimed/Multi-Shot casts. **A melee swing resets the ranged timer** (Blizzard calls the linked swing timers intended). OmniCast doesn't model that; it is unverified in our logs.
+- Wands toggle (Classic patch 1.5.0): Shoot "will continue attacking with the equipped wand until cancelled (e.g. moving)".

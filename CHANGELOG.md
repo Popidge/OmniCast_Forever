@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.2
+
+- Warrior log check: Throw and Shoot Gun fire once per press, with a weapon-speed timer and no repeat. An early press fails rather than queueing. v0.8.0's rules already handle this (plain timer bar, no marker).
+- Outside sources agree with the logs for all three ranged types (see FOREVER_API_NOTES). The Auto Shot delay after moving (0.68-0.83s) matches Blizzard's beta bug thread.
+- Removed the ranged probe.
+
 ## v0.8.1
 
 - Press-and-hold ignores ranged attacks (Shoot, Throw): holding them no longer counts as a held spell.
