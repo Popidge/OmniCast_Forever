@@ -92,7 +92,7 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 
 ## Logs and source
 
-- Saved log: `_forever_\WTF\Account\POPIDGE\SavedVariables\OmniCast_Forever.lua`. It's written on `/reload` or logout.
+- Saved log: `_forever_\WTF\Account\<account>\SavedVariables\OmniCast_Forever.lua`. It's written on `/reload` or logout.
 - Blizzard source: `_forever_\BlizzardInterfaceCode\Interface\AddOns\`. API docs are in `Blizzard_APIDocumentationGenerated\`.
 
 ## Auto Shot wind-up — confirmed (hunter L6, v0.6.3 probe)

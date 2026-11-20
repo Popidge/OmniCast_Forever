@@ -71,7 +71,8 @@ ns.defaults = {
         background  = { 0.00, 0.00, 0.00, 0.60 },
     },
 
-    debug = false,
+    debug = false,              -- echo log lines to chat (implies logging)
+    logging = false,            -- record events to the saved log (bug reports)
 
     -- learned in play: spellID -> 0 no GCD | 1 GCD only | 2 GCD + own cooldown
     layoutPositions = {},       -- Edit Mode layout key -> { point, x, y }
@@ -117,12 +118,21 @@ local function CallModules(method)
 end
 
 ---------------------------------------------------------------------------
--- Logging (persisted to SavedVariables so play sessions can be reviewed later)
+-- Logging. Off by default: "/oc log" records events to SavedVariables
+-- (OmniCastForeverLog) for bug reports, and "/oc debug" also echoes them
+-- to chat. Lines logged before the settings load are buffered and kept only
+-- if logging turns out to be on.
 ---------------------------------------------------------------------------
 local MAX_LOG = 1500
 local preLog = {}
 
+local function Logging()
+    if not ns.db then return true end -- not loaded yet: buffer
+    return ns.db.logging or ns.db.debug
+end
+
 function ns:Log(fmt, ...)
+    if not Logging() then return end
     local ok, msg = pcall(string.format, fmt, ...)
     if not ok then msg = tostring(fmt) end
     local line = string.format("%.3f %s", GetTime(), msg)
@@ -235,9 +245,13 @@ ns:On("ADDON_LOADED", function(_, name)
     end
 
     OmniCastForeverLog = OmniCastForeverLog or {}
-    OmniCastForeverLog.entries = OmniCastForeverLog.entries or {}
-    for _, line in ipairs(preLog) do
-        table.insert(OmniCastForeverLog.entries, line)
+    if ns.db.logging or ns.db.debug then
+        OmniCastForeverLog.entries = OmniCastForeverLog.entries or {}
+        for _, line in ipairs(preLog) do
+            table.insert(OmniCastForeverLog.entries, line)
+        end
+    else
+        OmniCastForeverLog.entries = {} -- logging off: keep the saved file small
     end
     wipe(preLog)
 
@@ -282,7 +296,8 @@ local HELP = {
     "/oc width <n> | height <n> - set bar size",
     "/oc reset - reset position   /oc resetall - reset every setting",
     "/oc probe - print client capability report (also saved to the log)",
-    "/oc debug - toggle event logging to chat   /oc clearlog - clear saved log",
+    "/oc log - record events for a bug report   /oc debug - also echo them to chat",
+    "/oc clearlog - clear the saved log",
 }
 
 SLASH_OMNICASTFOREVER1 = "/oc"
@@ -310,6 +325,15 @@ local function HandleSlash(msg)
         ns:ResetAll(); ns:Print("all settings reset")
     elseif cmd == "probe" then
         ns.Debug:Probe()
+    elseif cmd == "log" then
+        ns.db.logging = not ns.db.logging
+        if ns.db.logging then
+            local _, class = UnitClass("player")
+            ns:Log("=== logging on: v%s %s L%d ===", ns.version, tostring(class), UnitLevel("player") or 0)
+            ns:Print("logging ON - play, then /reload or log out; the log is saved in WTF\\Account\\<account>\\SavedVariables\\OmniCast_Forever.lua")
+        else
+            ns:Print("logging off (the saved log is cleared at next login)")
+        end
     elseif cmd == "debug" then
         ns.db.debug = not ns.db.debug
         ns:Print("debug logging to chat %s", ns.db.debug and "ON" or "off")

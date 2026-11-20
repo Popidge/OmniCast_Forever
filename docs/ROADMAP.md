@@ -24,6 +24,9 @@
 
 - ~~**Hunter Auto Shot window.**~~ (v0.7.0) The last 0.5s of Auto Shot is marked; moving through it shows "Stop to shoot".
 - ~~**Dual wield**~~ (confirmed, including mid-combat swaps, v0.5.7) and ~~**instance restrictions**~~ (Ragefire Chasm and Deadmines, v0.5.5).
+- **Rogue** (energy, 1.0s GCD) and **druid** (form GCD, Maul, shapeshifting mid-swing). Supported in code, not yet played.
+- **Melee resets the ranged timer** (Forever sources). Check on a hunter who melees then goes back to Auto Shot, and model it if the bar starts early.
+- **Release:** CurseForge beta, with bug reports from guild players (v0.9).
 
 ## Rejected
 

@@ -1,4 +1,15 @@
 # build output
 /OmniCast_Forever/
 /dist/
+*.zip
+
+# tooling
 node_modules/
+
+# editor / OS / local agent state
+.vscode/
+.idea/
+.claude/
+.kilo/
+Thumbs.db
+.DS_Store

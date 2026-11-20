@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.0: Public beta prep
+
+- **Logging is off by default.** OmniCast no longer records every session to its saved file. `/oc log` turns recording on for a bug report, and `/oc debug` also echoes it to chat. With logging off, the saved log is cleared at login, so the file stays small. Testers: run `/oc log` once to keep logging.
+- **README rewritten for players:** what the bar shows, setup, commands, a beta notice, how to report bugs with a log, and known limitations.
+- MIT licence added. `.gitignore` tidied. Local paths and account names removed from the docs.
+
 ## v0.8.2
 
 - Warrior log check: Throw and Shoot Gun fire once per press, with a weapon-speed timer and no repeat. An early press fails rather than queueing. v0.8.0's rules already handle this (plain timer bar, no marker).

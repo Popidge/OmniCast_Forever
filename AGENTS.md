@@ -12,3 +12,4 @@
 - Commit each new version on `main` once it is built and installed, with a message naming the version (e.g. "Add queued spell display (v0.5.0)"). The user has approved this. Don't push, since there is no remote yet.
 - Versions stay at 0.x.x. Bump the version with `./build.ps1 -Bump patch|minor`, which edits the TOC. Run `npm run check` (luaparse, Lua 5.1) after editing Lua.
 - The user play-tests live. Their client is at `D:\Battlenet\World of Warcraft\_forever_`, and the saved log is in `WTF\Account\*\SavedVariables\OmniCast_Forever.lua`. Read it after sessions.
+- Logging is off by default (v0.9). The user turns it on with `/oc log`. `ns:Log` lines are only recorded while it is on, so remind them to enable it before a test session.
