@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.0: Wand behaviour and press-and-hold casting
+
+- **Changed: wands** (and other non-hunter ranged attacks) now follow their real rule: they repeat while you stand still and stop for good when you move.
+  - No amber zone or "Stop to shoot". Those stay Auto Shot only, because Auto Shot is the only one that resumes.
+  - Starting the wand shows the first shot's ~0.5s wind-up.
+  - The bar stays up while the wand is shooting, and disappears the moment the wand stops (moving, or pressing Shoot again), instead of running out the timer.
+- **New: press-and-hold casting.** With Forever's Press and Hold Casting option on, holding a spell's key during a cast or the GCD shows that spell in the queued slot, since it goes off next. One-button Frostbolt shows the next Frostbolt. A normal tap doesn't count: the hold must last 0.25s. Works with Blizzard's action bars, including macros that cast a spell.
+- The setting is back to "Auto Shot wind-up".
+
 ## v0.7.3: Wand wind-up
 
 - **Changed:** wands get the wind-up zone instead of the queue marker. The v0.7.2 marker rested on a misread log: wands do auto-repeat while you stand still, and pressing Shoot again turns wanding off rather than queueing a shot.

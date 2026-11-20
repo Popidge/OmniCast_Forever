@@ -517,6 +517,7 @@ function Cast:Enable()
     local _, class = UnitClass("player")
     playerClass = class
     self.gcdLength = ns.db.gcdLengths[class] or CLASS_GCD[class] or DEFAULT_GCD
+    self:EnableHeld()
     ns.db.gcdLength = nil -- pre-0.2.1 account-wide value; now per class/spell
 
     -- SENT fires just before START (same frame) and carries the target name.
@@ -618,7 +619,20 @@ function Cast:GetQueued(now)
     local q = self.queued
     if q and not Busy(now - 0.5) then
         self.queued = nil
-        return nil
+        q = nil
+    end
+    -- A held key (press-and-hold casting) fires its spell as soon as the
+    -- cast/GCD ends, so show it like a queued spell.
+    local h = self.held
+    if h then
+        if Busy(now) then self.heldBusyAt = now end
+        local idle = now - (self.heldBusyAt or 0)
+        if idle > 1 and now - h.time > 1 then
+            self.held = nil -- idle for a second: the key-up was missed (e.g. alt-tab)
+        elseif not q and idle < 0.3 and now - h.time >= 0.25 then
+            -- (after 0.25s, so a normal tap never flashes the icon)
+            q = h -- (bridges the ~0.1s gap before the held spell starts)
+        end
     end
     return q
 end
@@ -643,4 +657,58 @@ function Cast:GetGCDLane(now)
     l.queue = C.SpellQueueWindow()
     l.durationObject = gcd.estimated and gcd.obj or nil
     return l
+end
+
+---------------------------------------------------------------------------
+-- Press-and-hold casting (Forever option "Press and Hold Casting", CVar
+-- ActionButtonUseKeyHeldSpell): while an action key is held, the game casts
+-- that spell again at the next opportunity. Nothing is queued in the game's
+-- sense, so watch the keys instead: keybound action buttons all go through
+-- Blizzard's TryUseActionButton(button, down). Post-hook only (no taint).
+---------------------------------------------------------------------------
+Cast.held = nil -- { id, name, icon, button }
+
+local function HoldEnabled()
+    local ok, v = pcall(GetCVarBool, "ActionButtonUseKeyHeldSpell")
+    return ok and v == true
+end
+
+local function ActionSpell(button)
+    local action = button and button.action
+    if type(action) ~= "number" or not C.Readable(action) then return nil end
+    local ok, kind, id = pcall(GetActionInfo, action)
+    if not ok or not C.Readable(kind, id) then return nil end
+    if kind == "spell" then return id end
+    if kind == "macro" and GetMacroSpell then
+        local ok2, sid = pcall(GetMacroSpell, id)
+        if ok2 and C.Readable(sid) then return sid end
+    end
+    return nil
+end
+
+local loggedHeld = 0
+ns:OnLogReset(function() loggedHeld = 0 end)
+
+local function OnActionKey(button, down)
+    if down then
+        if not HoldEnabled() then return end
+        local id = ActionSpell(button)
+        if not id or ns.Data:IsNextSwing(id, C.GetSpellName(id)) then return end
+        Cast.held = { id = id, name = C.GetSpellName(id), icon = C.GetSpellIcon(id), button = button, held = true, time = GetTime() }
+        if loggedHeld < 10 then
+            loggedHeld = loggedHeld + 1
+            ns:Log("press-and-hold: holding %s", tostring(Cast.held.name))
+        end
+        ns:Wake()
+    elseif Cast.held and Cast.held.button == button then
+        Cast.held = nil
+    end
+end
+
+function Cast:EnableHeld()
+    if type(TryUseActionButton) == "function" then
+        hooksecurefunc("TryUseActionButton", function(button, down) ns.SafeCall(OnActionKey, button, down) end)
+    else
+        ns:Log("TryUseActionButton missing; press-and-hold display off")
+    end
 end

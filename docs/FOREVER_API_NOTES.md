@@ -103,10 +103,16 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 - `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` fire normally in combat.
 - A run of `UNIT_SPELLCAST_FAILED` for Auto Shot followed by `STOP_AUTOREPEAT_SPELL` is the mob reaching melee range.
 
-## Wand Shoot — confirmed (mage L7, v0.7.1-v0.7.2 probes)
+## Wand Shoot — confirmed (mage L7-8, v0.7.1-v0.7.3 probes)
 
-- Shoot (5019) **auto-repeats** while you stand still (1.47-1.53s apart at 1.50s speed). Moving turns it off at once: `STOP_AUTOREPEAT_SPELL` follows ~0.1s after `PLAYER_STARTED_MOVING`.
-- Pressing Shoot again while wanding toggles it off (`FAILED`/`FAILED_QUIET` plus `STOP_AUTOREPEAT_SPELL`). A shot already in its last ~0.5s still fires. That is **not** a queue: v0.7.2 misread it as one.
-- The same ~0.5s wind-up as Auto Shot: from a finished timer the shot fires 0.53-0.65s after the press, and moving inside the last 0.5s gives `UNIT_SPELLCAST_INTERRUPTED`.
+- Shoot (5019) **auto-repeats** while you stand still (1.45-1.60s apart at 1.50s speed). Moving turns it off for good: `STOP_AUTOREPEAT_SPELL` follows ~0.1s after `PLAYER_STARTED_MOVING`, and it doesn't resume when you stop. This is "all or nothing", unlike Auto Shot. Presumably every non-hunter ranged attack works this way.
+- The first shot fires 0.53-0.65s after the press (`START_AUTOREPEAT_SPELL`).
+- Pressing Shoot again while wanding toggles it off (`FAILED`/`FAILED_QUIET` plus `STOP_AUTOREPEAT_SPELL`). A shot already in its last ~0.5s still fires. It is **not** a queue: v0.7.2 misread it as one.
 - Spells and wand shots don't queue into each other (user, in play). Casting while wanding doesn't stop the wand; moving does.
 - PLAYER_SWING type 2 carries the wand speed (1.50s).
+
+## Press-and-hold casting (Forever option, from retail)
+
+- CVar `ActionButtonUseKeyHeldSpell` (Options > Combat > Press and Hold Casting). While an action key is held, the game recasts that spell at the next opportunity.
+- Nothing is queued in the game's sense. The next cast starts ~0.1s after the previous `SUCCEEDED`, and no `queue:` press is seen.
+- Key presses on Blizzard action bars all go through the global `TryUseActionButton(button, down)` (called from `ActionButtonDown/Up` and `MultiActionButtonDown/Up`). A post-hook sees key down and key up. Addon bars with `CLICK` bindings bypass it.

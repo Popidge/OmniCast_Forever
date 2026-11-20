@@ -166,28 +166,23 @@ function Swing:QueryRange()
     end
 end
 
--- Auto Shot and wand Shoot auto-repeat, and their last 0.5s is a wind-up:
--- moving then interrupts the shot (confirmed in play: hunter v0.6.3, wand
--- v0.7.1/v0.7.2). Auto Shot fires ~0.5s after you stop; a wand stops
--- repeating as soon as you move. Throw / Shoot Bow-Gun are untested.
-local WINDUP_SPELLS = { [75] = true, [5019] = true } -- Auto Shot, Shoot (wand)
+-- Auto Shot vs every other ranged attack (confirmed in play):
+--   * Auto Shot (hunter v0.6.3): the last 0.5s is a wind-up. Moving there
+--     interrupts the shot, which fires ~0.5s after you stop; Auto Shot keeps
+--     repeating.
+--   * Wand Shoot (mage v0.7.1-v0.7.3): repeats while you stand still, but
+--     moving turns it off for good ("all or nothing"). The first shot fires
+--     ~0.5s after the press. Throw/Shoot Bow-Gun are assumed to match.
+local AUTO_SHOT = 75
 local SHOT_WINDUP = 0.5
 
-local function IsWindupShot(spellID, name)
-    if WINDUP_SPELLS[spellID] then return true end
-    if name == nil then return false end
-    for id in pairs(WINDUP_SPELLS) do
-        if name == C.GetSpellName(id) then return true end
-    end
-    return false
+local function IsAutoShot(spellID, name)
+    return spellID == AUTO_SHOT or (name ~= nil and name == C.GetSpellName(AUTO_SHOT))
 end
 
-local function WindupShotActive()
-    for id in pairs(WINDUP_SPELLS) do
-        local ok, cur = pcall(C_Spell.IsCurrentSpell, id)
-        if ok and C.Readable(cur) and cur == true then return true end
-    end
-    return false
+local function AutoShotActive()
+    local ok, cur = pcall(C_Spell.IsCurrentSpell, AUTO_SHOT)
+    return ok and C.Readable(cur) and cur == true
 end
 
 local function OnSpellSucceeded(_, _, _, spellID)
@@ -196,7 +191,7 @@ local function OnSpellSucceeded(_, _, _, spellID)
     local Data = ns.Data
     if Data:IsRanged(spellID, name) then
         Swing.rangedLabel = name
-        Swing.windupShot = IsWindupShot(spellID, name)
+        Swing.autoShot = IsAutoShot(spellID, name)
         if not Swing.nativeRanged then Swing:Start("ranged", false) end
     elseif Data:IsNextSwing(spellID, name) and not Swing.nativeMelee then
         -- Heroic Strike & co. "succeed" on the swing itself: a free resync point.
@@ -251,12 +246,24 @@ function Swing:Enable()
     end, "player")
     ns:On("UNIT_SPELLCAST_FAILED", function() if Swing.armed then Swing:CheckArmed("failed") end end, "player")
     ns:On("START_AUTOREPEAT_SPELL", function()
-        Swing.rangedOn = true; Swing:RefreshSpeeds()
-        if WindupShotActive() then Swing.windupShot = true end
+        Swing.rangedOn, Swing.rangedStopped = true, false
+        Swing:RefreshSpeeds()
+        Swing.autoShot = AutoShotActive() or (Swing.autoShot and Swing.rangedLabel == C.GetSpellName(AUTO_SHOT)) or false
+        -- Wand & co.: the first shot fires ~0.5s after the press. Show that
+        -- wind-up when nothing else is timing the shot.
+        local now = GetTime()
+        if not Swing.autoShot and not Swing:Running("ranged", now) and not ns.Cast.cur then
+            local t = timers.ranged
+            t.start, t.dur, t.finish, t.predicted, t.last = now, SHOT_WINDUP, now + SHOT_WINDUP, true, now
+        end
     end)
     ns:On("PLAYER_STARTED_MOVING", function() Swing.moving = true end)
     ns:On("PLAYER_STOPPED_MOVING", function() Swing.moving = false end)
-    ns:On("STOP_AUTOREPEAT_SPELL", function() Swing.rangedOn = false end)
+    ns:On("STOP_AUTOREPEAT_SPELL", function()
+        Swing.rangedOn = false
+        -- Anything but Auto Shot stops for good (moving): drop the bar now.
+        if not Swing.autoShot then Swing.rangedStopped = true end
+    end)
 
     ns:On("UNIT_ATTACK_SPEED", function()
         local mh, oh = C.MeleeSpeeds()
@@ -403,7 +410,7 @@ function Swing:GetLanes(now, out)
     Predict(now)
     local db = self.db or ns.db
 
-    local rangedLive = db.showRanged and (self.rangedOn or self:Running("ranged", now))
+    local rangedLive = db.showRanged and (self.rangedOn or (self:Running("ranged", now) and not self.rangedStopped))
     local meleeLive = db.showMelee and (self.meleeOn or self:Running("mh", now) or self:Running("oh", now))
     if rangedLive and meleeLive then
         -- Whichever was used most recently wins.
@@ -417,7 +424,7 @@ function Swing:GetLanes(now, out)
     if rangedLive then
         if FillLane(lanes.ranged, "ranged", now, self.rangedLabel or SWING_TIMER_RANGED or "Ranged", "ranged", self.rangedOn, 18) then
             local l = lanes.ranged
-            if db.showAutoShotWindow and self.windupShot then
+            if db.showAutoShotWindow and self.autoShot then
                 -- Mark the wind-up. Moving through it holds an Auto Shot until
                 -- you stop; a wand stops repeating instead (rangedOn goes false).
                 l.windup = SHOT_WINDUP
@@ -502,6 +509,6 @@ function Swing:EnableProbe()
         "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_SUCCEEDED" }) do
         ns:On(ev, OnRangedCastEvent, "player")
     end
-    ns:On("START_AUTOREPEAT_SPELL", function() probe.lastShot = nil; ProbeLog("auto-repeat on (%s), moving=%s", Swing.windupShot and "wind-up" or "other", tostring(probe.moving)) end)
+    ns:On("START_AUTOREPEAT_SPELL", function() probe.lastShot = nil; ProbeLog("auto-repeat on (%s), moving=%s", Swing.autoShot and "Auto Shot" or "other", tostring(probe.moving)) end)
     ns:On("STOP_AUTOREPEAT_SPELL", function() ProbeLog("auto-repeat off, %s", ShotLeft(GetTime())) end)
 end
