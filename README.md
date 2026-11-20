@@ -62,8 +62,10 @@ The log only contains OmniCast's own events (spell names, timings, the target na
 ## Development
 
 ```
-src/            addon source (the TOC is the version source of truth)
-build.ps1       checks and packages src/ into ./OmniCast_Forever and dist/OmniCast_Forever-v<ver>.zip
+*.lua, *.toc     the addon itself, at the repo root (the TOC is the version source of truth)
+build.ps1       local build: checks and packages into dist/OmniCast_Forever and a zip
+.pkgmeta        CurseForge packaging (CurseForge builds every pushed tag)
+CHANGELOG.txt   release notes shown on CurseForge and GitHub; CHANGELOG.md is the full history
 tools/          Lua 5.1 syntax and global-leak check (node + luaparse)
 docs/           WoW Forever API findings and the roadmap
 ```

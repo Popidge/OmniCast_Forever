@@ -1,0 +1,20 @@
+package-as: OmniCast_Forever
+
+manual-changelog:
+    filename: CHANGELOG.txt
+    markup-type: markdown
+
+enable-nolib-creation: no
+
+ignore:
+    - README.md
+    - AGENTS.md
+    - CLAUDE.md
+    - CHANGELOG.md
+    - CHANGELOG.txt
+    - build.ps1
+    - package.json
+    - package-lock.json
+    - docs
+    - tools
+    - dist

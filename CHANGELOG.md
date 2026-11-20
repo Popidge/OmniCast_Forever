@@ -5,6 +5,7 @@
 - **Logging is off by default.** OmniCast no longer records every session to its saved file. `/oc log` turns recording on for a bug report, and `/oc debug` also echoes it to chat. With logging off, the saved log is cleared at login, so the file stays small. Testers: run `/oc log` once to keep logging.
 - **README rewritten for players:** what the bar shows, setup, commands, a beta notice, how to report bugs with a log, and known limitations.
 - MIT licence added. `.gitignore` tidied. Local paths and account names removed from the docs.
+- The addon files now live at the repo root (was `src/`), so CurseForge can package the repo directly. Added `.pkgmeta`, a player-facing `CHANGELOG.txt` for release notes, and a GitHub Action that attaches the addon zip to a GitHub release for each tag. Local builds now go to `dist/`.
 
 ## v0.8.2
 

@@ -1,11 +1,11 @@
-// Syntax-checks every .lua file under src/ as Lua 5.1 (WoW's dialect) and
+// Syntax-checks every .lua file in the repo root (the addon) as Lua 5.1 (WoW's dialect) and
 // flags accidental global assignments. Usage: node tools/check-lua.mjs
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import luaparse from "luaparse";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // Globals the addon is allowed to define.
 const ALLOWED_GLOBALS = new Set([
   "OmniCastForeverDB", "OmniCastForeverLog", "SLASH_OMNICASTFOREVER1", "SLASH_OMNICASTFOREVER2",

@@ -1,7 +1,9 @@
 <#
 .SYNOPSIS
-  Packages src/ into ./OmniCast_Forever (ready to copy into Interface\AddOns)
-  and dist/OmniCast_Forever-v<version>.zip.
+  Packages the addon (the repo root's TOC, Lua files and LICENSE) into
+  dist/OmniCast_Forever (ready to copy into Interface\AddOns) and
+  dist/OmniCast_Forever-v<version>.zip. CurseForge builds its own package
+  from tags using .pkgmeta; this script is for local builds.
 
 .EXAMPLE
   ./build.ps1                 # check + package current version
@@ -19,8 +21,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $name = "OmniCast_Forever"
-$src = Join-Path $root "src"
-$toc = Join-Path $src "$name.toc"
+$toc = Join-Path $root "$name.toc"
 
 # --- version -----------------------------------------------------------------
 $tocText = Get-Content $toc -Raw
@@ -45,14 +46,13 @@ if (-not $SkipCheck) {
 }
 
 # --- package -----------------------------------------------------------------
-$out = Join-Path $root $name
-if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-New-Item -ItemType Directory $out | Out-Null
-Copy-Item (Join-Path $src "*") $out -Recurse
-Copy-Item (Join-Path $root "CHANGELOG.md") $out -ErrorAction SilentlyContinue
-
 $dist = Join-Path $root "dist"
 New-Item -ItemType Directory $dist -Force | Out-Null
+$out = Join-Path $dist $name
+if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+New-Item -ItemType Directory $out | Out-Null
+Copy-Item (Join-Path $root "$name.toc"), (Join-Path $root "*.lua"), (Join-Path $root "LICENSE") $out
+
 $zip = Join-Path $dist "$name-v$version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path $out -DestinationPath $zip

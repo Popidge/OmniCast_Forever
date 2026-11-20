@@ -1,0 +1,37 @@
+name: GitHub Release Asset
+
+# CurseForge packages tags itself (webhook + .pkgmeta). This attaches the same
+# addon zip to a GitHub release for people who install from GitHub.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build addon zip
+        run: |
+          mkdir -p dist/OmniCast_Forever
+          cp OmniCast_Forever.toc *.lua LICENSE dist/OmniCast_Forever/
+          cd dist && zip -r "OmniCast_Forever-${GITHUB_REF_NAME}.zip" OmniCast_Forever
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *alpha*|*beta*) prerelease="--prerelease" ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file CHANGELOG.txt
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file CHANGELOG.txt --verify-tag $prerelease
+          fi
+          gh release upload "$TAG" "dist/OmniCast_Forever-${TAG}.zip" --clobber

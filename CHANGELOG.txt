@@ -1,0 +1,18 @@
+## OmniCast Forever v0.9.0 (beta)
+
+First public beta. One bar for whatever your character is doing right now:
+
+- **Casts:** progress, latency, the spell-queue point and the queued spell icon, pushback, and your target.
+- **Channels:** a draining bar with tick marks.
+- **Global cooldown:** after instants, labelled with the spell you used.
+- **Melee swings:** main hand, splitting into main and off hand when dual wielding. The bar follows weapon swaps mid-combat.
+- **Next-swing abilities** (Heroic Strike, Cleave, Maul, Raptor Strike): the bar glows and shows the ability.
+- **Ranged:**
+  - Auto Shot, with its wind-up marked and a "Stop to shoot" warning.
+  - Wands, shot by shot while you stand still.
+  - Throw and other ranged shots, with their cooldown.
+- **Press and Hold Casting:** the held spell shows as next up.
+
+Move and resize the bar in Edit Mode. Open settings with `/oc`, and try `/oc test` for a demo.
+
+**Beta:** played on a warlock, mage, warrior and hunter; other classes are less tested. Please report bugs on GitHub (https://github.com/Popidge/OmniCast_Forever) or in the comments. `/oc log` records a log to attach.
