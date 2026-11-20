@@ -129,6 +129,7 @@ local function OnPlayerSwing(_, duration, swingType)
     end
     if hand == "ranged" then
         Swing.nativeRanged = true
+        Swing:ProbeShot(GetTime(), duration)
     else
         Swing.nativeMelee = true
         ns.Cast:OnMeleeSwing(GetTime())
@@ -193,6 +194,7 @@ function Swing:Enable()
     end
 
     ns:On("PLAYER_SWING", OnPlayerSwing)
+    self:EnableProbe()
     ns:On("PLAYER_SWING_RANGE_UPDATE", OnSwingRange)
     ns:On("UNIT_SPELLCAST_SUCCEEDED", OnSpellSucceeded, "player")
 
@@ -402,4 +404,64 @@ function Swing:GetLanes(now, out)
         end
     end
     return #out
+end
+
+---------------------------------------------------------------------------
+-- Auto Shot probe (diagnostic, hunter testing): does moving delay or cancel
+-- the shot near the end of the timer, as in Classic? Logs each shot's
+-- interval against the ranged speed, and movement relative to the timer.
+---------------------------------------------------------------------------
+local probe = { budget = 0, moving = false, movedSince = false, lastStop = nil, lastShot = nil }
+ns:OnLogReset(function() probe.budget = 0 end)
+
+local function ProbeLog(fmt, ...)
+    if probe.budget >= 80 then return end
+    probe.budget = probe.budget + 1
+    ns:Log("auto shot: " .. fmt, ...)
+end
+
+local function ShotLeft(now)
+    local t = timers.ranged
+    if t.finish then return string.format("%.2fs left", t.finish - now) end
+    return "no timer"
+end
+
+function Swing:ProbeShot(now, duration)
+    local prev = probe.lastShot
+    probe.lastShot = now
+    if prev and self.rangedOn then
+        local interval = now - prev
+        local speed = (C.Readable(duration) and type(duration) == "number") and duration or self.speed.ranged
+        if speed and interval < speed * 3 then
+            ProbeLog("interval %.2fs (speed %.2f, %+.2f) moved=%s%s", interval, speed, interval - speed,
+                tostring(probe.movedSince or probe.moving),
+                probe.lastStop and string.format(", stopped %.2fs before shot", now - probe.lastStop) or "")
+        end
+    end
+    probe.movedSince = probe.moving
+    probe.lastStop = nil
+end
+
+local function OnMove(started)
+    probe.moving = started
+    if started then probe.movedSince = true else probe.lastStop = GetTime() end
+    if Swing.rangedOn then
+        ProbeLog("%s moving, %s", started and "started" or "stopped", ShotLeft(GetTime()))
+    end
+end
+
+local function OnRangedCastEvent(event, _, _, spellID)
+    if C.IsSecret(spellID) or not ns.Data:IsRanged(spellID, C.GetSpellName(spellID)) then return end
+    ProbeLog("%s, %s, moving=%s", event, ShotLeft(GetTime()), tostring(probe.moving))
+end
+
+function Swing:EnableProbe()
+    ns:On("PLAYER_STARTED_MOVING", function() OnMove(true) end)
+    ns:On("PLAYER_STOPPED_MOVING", function() OnMove(false) end)
+    for _, ev in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED",
+        "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_DELAYED" }) do
+        ns:On(ev, OnRangedCastEvent, "player")
+    end
+    ns:On("START_AUTOREPEAT_SPELL", function() probe.lastShot = nil; ProbeLog("auto-repeat on, moving=%s", tostring(probe.moving)) end)
+    ns:On("STOP_AUTOREPEAT_SPELL", function() ProbeLog("auto-repeat off, %s", ShotLeft(GetTime())) end)
 end

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.3 (hunter diagnostics)
+
+- Hunter log check (level 6): Auto Shot arrives as `PLAYER_SWING` type 2 with the hasted speed (2.14s), shots land 2.11-2.21s apart, Raptor Strike arms and clears correctly, and the bar switches between ranged and melee as the target closes in.
+- **Diagnostics:** an Auto Shot probe logs each shot's interval against the speed, movement start/stop with the time left on the shot, and any Auto Shot cast events. It answers whether moving near the end of the timer delays the shot, as in Classic, before the "don't move" window gets built.
+
 ## v0.6.2 (taint fix)
 
 - **Fixed:** "OmniCast Forever has been blocked from an action" could appear, e.g. while browsing the game options. The Blizzard cast bar and swing timer sit in the same bottom layout as the protected action bars, and OmniCast hid them with `Hide()`, which re-ran that layout from addon code. They are now made invisible (alpha 0) instead, leaving Blizzard's layout alone. In Edit Mode they keep their normal look so they can still be moved.
