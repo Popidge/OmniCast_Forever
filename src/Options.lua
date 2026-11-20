@@ -113,7 +113,7 @@ local function Build()
     Header("Casting")
     Check("showLatency", "Latency zone", "Red section at the end of a cast: your network delay.")
     Check("showQueueWindow", "Spell queue marker",
-        "Line showing when you can press your next spell (SpellQueueWindow).")
+        "Line showing when you can press your next spell (SpellQueueWindow). Also on wand and Throw shots, where an early press fires as the timer ends.")
     Check("showTicks", "Channel ticks")
     Check("showQueued", "Queued spell",
         "When you press your next spell during a cast or the GCD, show its icon at the end of the bar until it goes off.")

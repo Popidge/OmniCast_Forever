@@ -407,7 +407,12 @@ function Swing:GetLanes(now, out)
     if rangedLive then
         if FillLane(lanes.ranged, "ranged", now, self.rangedLabel or SWING_TIMER_RANGED or "Ranged", "ranged", self.rangedOn, 18) then
             local l = lanes.ranged
-            if db.showAutoShotWindow and self.autoShot then
+            if not self.autoShot then
+                -- Wand Shoot / Throw fire once per press. A press inside the
+                -- spell queue window is held and fires as the timer ends
+                -- (confirmed for wands, v0.7.1), so mark that window.
+                l.queue = C.SpellQueueWindow()
+            elseif db.showAutoShotWindow then
                 -- Mark the wind-up; moving through it holds the shot until you stop.
                 l.windup = AUTO_SHOT_WINDUP
                 local inWindup = l.state == "ready" or (l.finish and l.finish - now <= AUTO_SHOT_WINDUP)

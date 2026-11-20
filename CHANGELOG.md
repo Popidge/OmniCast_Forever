@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.2: Wand queue marker
+
+- **New:** wand and Throw shots show the spell queue marker on the ranged bar. On Forever a wand fires once per press, and pressing Shoot after the marker gets the next shot off the moment the timer ends. The mage log confirms this for wands; Throw is still to be tested.
+- The ranged probe stays in for the Throw test.
+
 ## v0.7.1 (wand/Throw diagnostics)
 
 - **Diagnostics:** the movement probe is back for wands and Throw. It logs movement while a ranged timer runs, each shot's interval, and any ranged cast events, to find out whether they share Auto Shot's wind-up rule.
