@@ -103,10 +103,10 @@ Facts about the client OmniCast targets. **Confirmed** means checked against Bli
 - `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` fire normally in combat.
 - A run of `UNIT_SPELLCAST_FAILED` for Auto Shot followed by `STOP_AUTOREPEAT_SPELL` is the mob reaching melee range.
 
-## Wand Shoot — confirmed (mage L7, v0.7.1 probe)
+## Wand Shoot — confirmed (mage L7, v0.7.1-v0.7.2 probes)
 
-- Shoot (5019) fires **once per press** on Forever. `START_AUTOREPEAT_SPELL` fires on the press, and `STOP_AUTOREPEAT_SPELL` follows 0.2-0.3s after the shot, even standing still.
-- From a finished timer the shot fires 0.56-0.68s after the press: a ~0.5s wind-up plus latency. Moving during it gives `UNIT_SPELLCAST_INTERRUPTED`.
-- A press inside the spell queue window (0.34/0.21/0.13s left on the timer) gets `FAILED_QUIET` or `FAILED` plus `STOP_AUTOREPEAT_SPELL`, yet the shot still fires as the timer ends. The second press after the 0.13s one fizzled, so it isn't certain.
-- A press during a cast (Frostbolt) fails quietly, and sometimes fires after the cast.
+- Shoot (5019) **auto-repeats** while you stand still (1.47-1.53s apart at 1.50s speed). Moving turns it off at once: `STOP_AUTOREPEAT_SPELL` follows ~0.1s after `PLAYER_STARTED_MOVING`.
+- Pressing Shoot again while wanding toggles it off (`FAILED`/`FAILED_QUIET` plus `STOP_AUTOREPEAT_SPELL`). A shot already in its last ~0.5s still fires. That is **not** a queue: v0.7.2 misread it as one.
+- The same ~0.5s wind-up as Auto Shot: from a finished timer the shot fires 0.53-0.65s after the press, and moving inside the last 0.5s gives `UNIT_SPELLCAST_INTERRUPTED`.
+- Spells and wand shots don't queue into each other (user, in play). Casting while wanding doesn't stop the wand; moving does.
 - PLAYER_SWING type 2 carries the wand speed (1.50s).

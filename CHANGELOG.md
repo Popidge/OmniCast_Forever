@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.3: Wand wind-up
+
+- **Changed:** wands get the wind-up zone instead of the queue marker. The v0.7.2 marker rested on a misread log: wands do auto-repeat while you stand still, and pressing Shoot again turns wanding off rather than queueing a shot.
+- **New:** the last 0.5s of each wand shot is marked, as for Auto Shot. Moving there interrupts the shot, and moving at all stops wanding. "Stop to shoot" stays Auto Shot only, because Auto Shot resumes when you stop and a wand doesn't.
+- The setting is now "Ranged wind-up" (Settings > Swing timers).
+- Throw is still untested and shows neither marker. The probe stays in for it.
+
 ## v0.7.2: Wand queue marker
 
 - **New:** wand and Throw shots show the spell queue marker on the ranged bar. On Forever a wand fires once per press, and pressing Shoot after the marker gets the next shot off the moment the timer ends. The mage log confirms this for wands; Throw is still to be tested.

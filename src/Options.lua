@@ -113,7 +113,7 @@ local function Build()
     Header("Casting")
     Check("showLatency", "Latency zone", "Red section at the end of a cast: your network delay.")
     Check("showQueueWindow", "Spell queue marker",
-        "Line showing when you can press your next spell (SpellQueueWindow). Also on wand and Throw shots, where an early press fires as the timer ends.")
+        "Line showing when you can press your next spell (SpellQueueWindow).")
     Check("showTicks", "Channel ticks")
     Check("showQueued", "Queued spell",
         "When you press your next spell during a cast or the GCD, show its icon at the end of the bar until it goes off.")
@@ -125,8 +125,8 @@ local function Build()
     Header("Swing timers")
     Check("showMelee", "Melee swings")
     Check("showRanged", "Ranged / wand shots")
-    Check("showAutoShotWindow", "Auto Shot wind-up",
-        "Marks the last 0.5s of Auto Shot. Moving then holds the shot until you stop, and the bar says \"Stop to shoot\".")
+    Check("showAutoShotWindow", "Ranged wind-up",
+        "Marks the last 0.5s of Auto Shot and wand shots, where moving interrupts the shot. Auto Shot waits until you stop (the bar says \"Stop to shoot\"); a wand stops shooting.")
     Check("showNextSwing", "Next-swing abilities",
         "While Heroic Strike, Cleave, Maul or Raptor Strike waits for your next swing, the main-hand bar glows and shows its name and icon.")
     Dropdown("dualLayout", "Dual wield", function()
