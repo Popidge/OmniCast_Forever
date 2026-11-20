@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.1 (wand/Throw diagnostics)
+
+- **Diagnostics:** the movement probe is back for wands and Throw. It logs movement while a ranged timer runs, each shot's interval, and any ranged cast events, to find out whether they share Auto Shot's wind-up rule.
+- v0.7.0 hunter log: Auto Shot is detected and timed correctly, and no errors appeared.
+
 ## v0.7.0: Auto Shot wind-up
 
 - **New: Auto Shot wind-up** (on by default). The last 0.5s of the Auto Shot timer is marked in amber. Moving there interrupts the shot, as in Classic. While moving holds the shot, the bar says "Stop to shoot"; the shot fires about half a second after you stop.
