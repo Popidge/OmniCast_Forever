@@ -693,7 +693,9 @@ local function OnActionKey(button, down)
     if down then
         if not HoldEnabled() then return end
         local id = ActionSpell(button)
-        if not id or ns.Data:IsNextSwing(id, C.GetSpellName(id)) then return end
+        local name = C.GetSpellName(id)
+        -- Next-swing and ranged attacks (Shoot, Throw) have their own displays.
+        if not id or ns.Data:IsNextSwing(id, name) or ns.Data:IsRanged(id, name) then return end
         Cast.held = { id = id, name = C.GetSpellName(id), icon = C.GetSpellIcon(id), button = button, held = true, time = GetTime() }
         if loggedHeld < 10 then
             loggedHeld = loggedHeld + 1

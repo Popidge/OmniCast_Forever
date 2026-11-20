@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.1
+
+- Press-and-hold ignores ranged attacks (Shoot, Throw): holding them no longer counts as a held spell.
+- v0.8.0 mage log: the wand's first shot fired 0.54-0.64s after the start, shots came every 1.41-1.63s standing still, and every move ended wanding within ~0.1s. Press-and-hold Frostbolt chains were detected.
+
 ## v0.8.0: Wand behaviour and press-and-hold casting
 
 - **Changed: wands** (and other non-hunter ranged attacks) now follow their real rule: they repeat while you stand still and stop for good when you move.
